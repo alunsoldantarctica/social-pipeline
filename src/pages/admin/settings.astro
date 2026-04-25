@@ -1,0 +1,9 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import SettingsPage from '../../components/react/admin/pages/SettingsPage';
+---
+
+<AdminLayout title="Settings">
+  <SettingsPage client:only="react" />
+</AdminLayout>

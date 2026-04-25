@@ -1,0 +1,10 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import { createAdminPage } from '../../components/react/admin/createAdminPage';
+
+const DashboardPage = createAdminPage('DashboardPage');
+---
+
+<MainLayout title="Dashboard">
+  <DashboardPage client:load />
+</MainLayout>

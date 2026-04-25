@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.astro/
+
+# Convex generated files
+convex/_generated/
+
+# Environment variables — NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+e2e/.auth/
+playwright-report/
+test-results/
+
+# Plans (may contain sensitive data like API keys)
+.plans/

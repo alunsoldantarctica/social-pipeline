@@ -1,0 +1,51 @@
+name = "social-pipeline"
+compatibility_date = "2025-01-01"
+main = "@astrojs/cloudflare/entrypoints/server"
+workers_dev = true
+preview_urls = true
+
+# KV Namespace for Astro Sessions
+# Run: wrangler kv namespace create SESSION
+# Then replace the id below with the output id.
+[[kv_namespaces]]
+binding = "SESSION"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Environment variables
+[vars]
+# Run: pnpx convex dev  (first time — creates your deployment and prints the URL)
+PUBLIC_CONVEX_URL = "https://your-deployment.convex.cloud"
+# Run: npx web-push generate-vapid-keys  to generate VAPID keys for push notifications
+PUBLIC_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+# Your Cloudflare Images account hash (from Cloudflare Dashboard → Images → Overview)
+CLOUDFLARE_IMAGES_HASH = "REPLACE_WITH_YOUR_IMAGES_HASH"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+# ===== Dev Environment =====
+[env.dev]
+name = "social-pipeline-dev"
+workers_dev = true
+
+[env.dev.vars]
+PUBLIC_CONVEX_URL = "https://your-dev-deployment.convex.cloud"
+PUBLIC_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+CLOUDFLARE_IMAGES_HASH = "REPLACE_WITH_YOUR_IMAGES_HASH"
+
+[[env.dev.kv_namespaces]]
+binding = "SESSION"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[env.dev.observability]
+enabled = true
+head_sampling_rate = 1
+
+[env.dev.observability.logs]
+enabled = true
+invocation_logs = true

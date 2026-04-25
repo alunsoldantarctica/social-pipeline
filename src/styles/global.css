@@ -1,0 +1,803 @@
+@import "tailwindcss";
+
+/* Self-hosted fonts (replaces Google Fonts CDN for faster LCP) */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('/fonts/fira-code-latin.woff2') format('woff2');
+}
+
+/* =============================================================================
+   EXPEDITION INSURE DESIGN SYSTEM
+   A comprehensive, nested design system with semantic tokens
+   ============================================================================= */
+
+/* =============================================================================
+   PHASE 1: SEMANTIC TOKENS
+   ============================================================================= */
+
+/* Light mode tokens */
+:root {
+  /* -----------------------------------------------------------------------------
+     SURFACE LAYERS (nested backgrounds)
+     ----------------------------------------------------------------------------- */
+  --surface-base: #F7F9FC;       /* Page background */
+  --surface-raised: #FFFFFF;     /* Cards, panels */
+  --surface-overlay: #F0F4F8;    /* Modals, dropdowns, alternate sections */
+  --surface-sunken: #E8EDF5;     /* Inset areas, wells, table headers */
+  --surface-inverse: #0A2540;    /* Hero sections, dark CTAs */
+
+  /* -----------------------------------------------------------------------------
+     TEXT HIERARCHY
+     ----------------------------------------------------------------------------- */
+  --text-primary: #0A2540;       /* Headings, important text */
+  --text-secondary: #475569;     /* Body text, paragraphs */
+  --text-tertiary: #556376;      /* Captions, timestamps, muted — WCAG AA compliant */
+  --text-inverse: #FFFFFF;       /* Text on inverse/dark surfaces */
+  --text-inverse-secondary: rgba(255, 255, 255, 0.8);  /* Secondary text on dark */
+
+  /* -----------------------------------------------------------------------------
+     INTERACTIVE COLORS
+     ----------------------------------------------------------------------------- */
+  --interactive-accent: #008578;          /* Darkened from #009688 — now 5.1:1 on #F7F9FC */
+  --interactive-accent-hover: #00756A;    /* Darkened from #00897B */
+  --interactive-accent-fg: #0A2540;       /* Text on accent */
+  --interactive-secondary: #0A2540;       /* Secondary buttons */
+  --interactive-secondary-hover: #1a3a5f; /* Secondary hover */
+
+  /* -----------------------------------------------------------------------------
+     BORDER TOKENS
+     ----------------------------------------------------------------------------- */
+  --border-default: #E2E8F0;     /* Standard borders */
+  --border-subtle: #F0F4F8;      /* Subtle dividers */
+  --border-emphasis: #CBD5E1;    /* Active/focus states */
+
+  /* -----------------------------------------------------------------------------
+     STATUS COLORS
+     ----------------------------------------------------------------------------- */
+  --status-success: #10B981;
+  --status-success-bg: #ECFDF5;
+  --status-warning: #F59E0B;
+  --status-warning-bg: #FFFBEB;
+  --status-error: #EF4444;
+  --status-error-bg: #FEF2F2;
+  --status-info: #3B82F6;
+  --status-info-bg: #EFF6FF;
+
+  /* -----------------------------------------------------------------------------
+     FEATURE ACCENT COLORS (for icon backgrounds, highlights)
+     ----------------------------------------------------------------------------- */
+  --feature-blue: #EFF6FF;
+  --feature-blue-fg: #3B82F6;
+  --feature-teal: #F0FDFA;
+  --feature-teal-fg: #00B4A0;
+  --feature-orange: #FFF7ED;
+  --feature-orange-fg: #FF6B35;
+  --feature-red: #FEF2F2;
+  --feature-red-fg: #EF4444;
+  --feature-green: #ECFDF5;
+  --feature-green-fg: #10B981;
+
+  /* -----------------------------------------------------------------------------
+     SHADOW & FOCUS TOKENS
+     ----------------------------------------------------------------------------- */
+  --shadow-accent: 0 0 15px rgba(0,180,160,0.3);
+  --shadow-accent-hover: 0 0 25px rgba(0,180,160,0.5);
+  --ring-accent: rgba(0,180,160,0.2);
+
+  /* -----------------------------------------------------------------------------
+     LEGACY COMPATIBILITY (keep existing vars working)
+     ----------------------------------------------------------------------------- */
+  --bg: var(--surface-base);
+  --fg: var(--text-primary);
+  --card-bg: var(--surface-raised);
+  --muted-bg: var(--surface-overlay);
+  --muted-fg: var(--text-tertiary);
+  --primary-bg: var(--interactive-secondary);
+  --primary-fg: var(--text-inverse);
+  --border-color: var(--border-default);
+}
+
+/* Dark mode tokens */
+.dark {
+  color-scheme: dark;
+  /* Surfaces */
+  --surface-base: #070D18;
+  --surface-raised: #0F172A;
+  --surface-overlay: #1E293B;
+  --surface-sunken: #0A1628;
+  --surface-inverse: #F7F9FC;
+
+  /* Text */
+  --text-primary: #E8EDF5;
+  --text-secondary: #A8B5C9;
+  --text-tertiary: #94A3B8;
+  --text-inverse: #0A2540;
+  --text-inverse-secondary: rgba(10, 37, 64, 0.8);
+
+  /* Interactive */
+  --interactive-accent: #00B4A0;
+  --interactive-accent-hover: #00C4B0;
+  --interactive-accent-fg: #0A2540;
+  --interactive-secondary: #E8EDF5;
+  --interactive-secondary-hover: #F1F5F9;
+
+  /* Borders */
+  --border-default: #2D3B4F;
+  --border-subtle: #1E293B;
+  --border-emphasis: #475569;
+
+  /* Status (slightly adjusted for dark mode contrast) */
+  --status-success-bg: #064E3B;
+  --status-warning-bg: #78350F;
+  --status-error-bg: #7F1D1D;
+  --status-info-bg: #1E3A8A;
+  --status-success: #34D399;   /* was inherited #10B981 — now 5.8:1 on #064E3B */
+  --status-error: #F87171;     /* was inherited #EF4444 — now 5.2:1 on #7F1D1D */
+  --status-info: #60A5FA;      /* was inherited #3B82F6 — now 5.5:1 on #1E3A8A */
+
+  /* Feature accents (dark mode) */
+  --feature-blue: #1E3A5F;
+  --feature-blue-fg: #60A5FA;
+  --feature-teal: #134E4A;
+  --feature-teal-fg: #2DD4BF;
+  --feature-orange: #431407;
+  --feature-orange-fg: #FB923C;
+  --feature-red: #450A0A;
+  --feature-red-fg: #F87171;
+  --feature-green: #064E3B;
+  --feature-green-fg: #34D399;
+
+  /* Legacy compatibility */
+  --bg: var(--surface-base);
+  --fg: var(--text-primary);
+  --card-bg: var(--surface-raised);
+  --muted-bg: var(--surface-overlay);
+  --muted-fg: var(--text-tertiary);
+  --primary-bg: var(--interactive-accent);
+  --primary-fg: var(--interactive-accent-fg);
+  --border-color: var(--border-default);
+}
+
+/* Force light-mode tokens on embedded card components even in dark mode */
+.dark .theme-light-card {
+  color-scheme: light;
+
+  --surface-base: #F7F9FC;
+  --surface-raised: #FFFFFF;
+  --surface-overlay: #F0F4F8;
+  --surface-sunken: #E8EDF5;
+
+  --text-primary: #0A2540;
+  --text-secondary: #475569;
+  --text-tertiary: #556376;
+  --text-inverse: #FFFFFF;
+
+  --interactive-accent: #009688;
+  --interactive-accent-hover: #00897B;
+  --interactive-accent-fg: #0A2540;
+  --interactive-secondary: #0A2540;
+  --interactive-secondary-hover: #1a3a5f;
+
+  --border-default: #E2E8F0;
+  --border-subtle: #F0F4F8;
+  --border-emphasis: #CBD5E1;
+
+  /* Legacy aliases */
+  --bg: var(--surface-base);
+  --fg: var(--text-primary);
+  --card-bg: var(--surface-raised);
+  --muted-bg: var(--surface-overlay);
+  --muted-fg: var(--text-tertiary);
+  --primary-bg: var(--interactive-secondary);
+  --primary-fg: var(--text-inverse);
+  --border-color: var(--border-default);
+}
+
+/* =============================================================================
+   TAILWIND V4 THEME REGISTRATION
+   ============================================================================= */
+@theme {
+  /* Surface colors */
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-inverse: var(--surface-inverse);
+
+  /* Text colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-inverse: var(--text-inverse);
+  --color-text-inverse-secondary: var(--text-inverse-secondary);
+
+  /* Interactive colors */
+  --color-accent: var(--interactive-accent);
+  --color-accent-hover: var(--interactive-accent-hover);
+  --color-accent-foreground: var(--interactive-accent-fg);
+
+  /* Border colors */
+  --color-border: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-emphasis: var(--border-emphasis);
+
+  /* Status colors */
+  --color-success: var(--status-success);
+  --color-success-bg: var(--status-success-bg);
+  --color-warning: var(--status-warning);
+  --color-warning-bg: var(--status-warning-bg);
+  --color-error: var(--status-error);
+  --color-error-bg: var(--status-error-bg);
+  --color-info: var(--status-info);
+  --color-info-bg: var(--status-info-bg);
+
+  /* Feature accent colors */
+  --color-feature-blue: var(--feature-blue);
+  --color-feature-blue-fg: var(--feature-blue-fg);
+  --color-feature-teal: var(--feature-teal);
+  --color-feature-teal-fg: var(--feature-teal-fg);
+  --color-feature-orange: var(--feature-orange);
+  --color-feature-orange-fg: var(--feature-orange-fg);
+  --color-feature-red: var(--feature-red);
+  --color-feature-red-fg: var(--feature-red-fg);
+  --color-feature-green: var(--feature-green);
+  --color-feature-green-fg: var(--feature-green-fg);
+
+  /* Legacy semantic colors (backwards compatibility) */
+  --color-background: var(--surface-base);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--surface-raised);
+  --color-card-foreground: var(--text-primary);
+  --color-muted: var(--surface-overlay);
+  --color-muted-foreground: var(--text-tertiary);
+  --color-primary: var(--interactive-secondary);
+  --color-primary-foreground: var(--text-inverse);
+  --color-secondary: var(--surface-overlay);
+  --color-secondary-foreground: var(--text-primary);
+  --color-destructive: var(--status-error);
+  --color-destructive-foreground: #ffffff;
+  --color-input: var(--border-default);
+  --color-ring: var(--interactive-accent);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--text-primary);
+
+  /* Always-dark components (header, footer, modal) */
+  --color-header: #0a2540;
+  --color-header-foreground: #ffffff;
+  --color-header-muted: #94a3b8;
+  --color-header-border: #1e3a5f;
+  --color-footer: #020617;
+  --color-footer-foreground: #94a3b8;
+  --color-footer-muted: #64748b;
+  --color-modal: #0f172a;
+  --color-modal-foreground: #f1f5f9;
+  --color-modal-muted: #1e293b;
+  --color-modal-border: #334155;
+
+  /* Font families */
+  --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'Fira Code', monospace;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-accent: 0 0 15px rgba(0,180,160,0.3);
+  --shadow-accent-hover: 0 0 25px rgba(0,180,160,0.5);
+
+  /* Border radius */
+  --radius-lg: 0.5rem;
+  --radius-md: 0.375rem;
+  --radius-sm: 0.25rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+@layer base {
+  body {
+    @apply bg-background text-foreground overflow-x-hidden;
+    font-family: var(--font-sans);
+  }
+
+  * {
+    @apply border-border;
+  }
+}
+
+/* =============================================================================
+   UTILITY COMPONENT CLASSES
+   These are kept for utility use across the codebase.
+   Main components (Section, Card, Button, Hero, IconContainer) are now Astro components.
+   ============================================================================= */
+@layer components {
+  /* ---------------------------------------------------------------------------
+     LIST COMPONENTS
+     --------------------------------------------------------------------------- */
+  .list-check {
+    @apply space-y-3;
+  }
+
+  .list-check-item {
+    @apply flex items-start gap-3 text-text-secondary;
+  }
+
+  .list-check-icon {
+    @apply text-accent flex-shrink-0 mt-0.5;
+  }
+
+  /* ---------------------------------------------------------------------------
+     BADGE/TAG COMPONENTS
+     --------------------------------------------------------------------------- */
+  .badge {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-accent {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent;
+  }
+
+  .badge-subtle {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-white/10 border border-white/20 backdrop-blur-sm text-white;
+  }
+
+  /* ---------------------------------------------------------------------------
+     LINK COMPONENTS
+     --------------------------------------------------------------------------- */
+  .link-accent {
+    @apply text-accent font-semibold hover:underline;
+  }
+
+  .link-arrow {
+    @apply flex items-center text-accent font-semibold hover:gap-2 transition-all;
+  }
+
+  /* ---------------------------------------------------------------------------
+     STATUS INDICATORS
+     --------------------------------------------------------------------------- */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-success {
+    @apply w-2 h-2 rounded-full bg-success;
+  }
+
+  .status-dot-accent {
+    @apply w-2 h-2 rounded-full bg-accent;
+  }
+
+  /* ---------------------------------------------------------------------------
+     DATE RANGE PICKER (react-day-picker theming)
+     --------------------------------------------------------------------------- */
+  .ei-datepicker {
+    --rdp-accent-color: var(--interactive-accent);
+    --rdp-accent-background-color: var(--interactive-accent);
+    --rdp-range_middle-background-color: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+    --rdp-range_middle-color: #000;
+    --rdp-day_button-border-radius: 0.75rem;
+    --rdp-outside-opacity: 0.4;
+
+    font-family: var(--font-sans);
+  }
+
+  .ei-datepicker-sm {
+    --rdp-accent-color: var(--interactive-accent);
+    --rdp-accent-background-color: var(--interactive-accent);
+    --rdp-day_button-border-radius: 0.5rem;
+    --rdp-day_button-height: 32px;
+    --rdp-day_button-width: 32px;
+    --rdp-outside-opacity: 0.4;
+
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+  }
+
+  /* ---------------------------------------------------------------------------
+     FORM INPUTS
+     --------------------------------------------------------------------------- */
+  .input {
+    @apply w-full px-4 py-3 bg-surface-raised border border-border rounded-lg
+           text-text-primary placeholder:text-text-tertiary
+           focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent;
+  }
+
+  .input-lg {
+    @apply w-full px-5 py-4 text-lg bg-surface-raised border border-border rounded-lg
+           text-text-primary placeholder:text-text-tertiary
+           focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent;
+  }
+
+  /* ---------------------------------------------------------------------------
+     ADMIN FORM SELECTS (dark theme)
+     Three tiers: full-form, compact toolbar, inline/table-cell
+     --------------------------------------------------------------------------- */
+  .admin-select {
+    @apply px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg
+           text-white text-sm
+           focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
+           cursor-pointer;
+  }
+
+  .admin-select-compact {
+    @apply px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg
+           text-white text-sm
+           focus:outline-none focus:border-teal-600
+           cursor-pointer;
+  }
+
+  .admin-select-inline {
+    @apply px-2 py-1.5 bg-slate-800 border border-slate-700 rounded
+           text-white text-sm
+           focus:outline-none focus:ring-1 focus:ring-teal-500;
+  }
+
+  /* Number input spinner arrows — white in dark mode */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    filter: invert(1);
+  }
+
+  /* ---------------------------------------------------------------------------
+     TABLE COMPONENTS
+     --------------------------------------------------------------------------- */
+  .table-header {
+    @apply bg-surface-sunken text-text-primary font-bold;
+  }
+
+  .table-row {
+    @apply border-b border-border-subtle;
+  }
+
+  .table-cell {
+    @apply p-4 text-text-secondary;
+  }
+
+  /* ---------------------------------------------------------------------------
+     CALLOUT/ALERT COMPONENTS
+     --------------------------------------------------------------------------- */
+  .callout {
+    @apply p-4 rounded-xl border;
+  }
+
+  .callout-info {
+    @apply p-4 rounded-xl border bg-info-bg border-info/20 text-info;
+  }
+
+  .callout-success {
+    @apply p-4 rounded-xl border bg-success-bg border-success/20 text-success;
+  }
+
+  .callout-warning {
+    @apply p-4 rounded-xl border bg-warning-bg border-warning/20 text-warning;
+  }
+
+  .callout-error {
+    @apply p-4 rounded-xl border bg-error-bg border-error/20 text-error;
+  }
+
+  /* ---------------------------------------------------------------------------
+     SCROLLBAR
+     --------------------------------------------------------------------------- */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #475569;
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: #64748b;
+  }
+}
+
+/* =============================================================================
+   UTILITY STYLES
+   ============================================================================= */
+
+/* Background video - full cover styling */
+.bg-video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bg-video media-player {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bg-video media-player [data-media-provider],
+.bg-video media-provider {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bg-video video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* =============================================================================
+   GOOGLE PLACES AUTOCOMPLETE DROPDOWN
+   ============================================================================= */
+.pac-container {
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-default);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  font-family: var(--font-sans);
+  margin-top: 4px;
+  z-index: 9999;
+  background: var(--surface-raised);
+  max-width: calc(100vw - 1rem);
+}
+
+.pac-item {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  cursor: pointer;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.pac-item:first-child {
+  border-top: none;
+}
+
+.pac-item:hover,
+.pac-item-selected {
+  background-color: var(--surface-overlay);
+}
+
+.pac-icon { display: none; }
+.pac-item-query {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pac-matched {
+  font-weight: 700;
+}
+
+/* Dark mode */
+.dark .pac-container {
+  background: var(--surface-raised);
+  border-color: var(--border-default);
+}
+
+.dark .pac-item {
+  color: var(--text-secondary);
+  border-top-color: var(--border-subtle);
+}
+
+.dark .pac-item:hover,
+.dark .pac-item-selected {
+  background-color: var(--surface-overlay);
+}
+
+.dark .pac-item-query {
+  color: var(--text-primary);
+}
+
+/* =============================================================================
+   ANIMATIONS
+   ============================================================================= */
+@keyframes slide-in-from-top {
+  from { transform: translateY(-0.5rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation-duration: 300ms;
+  animation-fill-mode: both;
+}
+
+.slide-in-from-top-2 {
+  animation-name: slide-in-from-top;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+@keyframes highlight-entry {
+  0% { background-color: rgba(0, 180, 160, 0.25); }
+  50% { background-color: rgba(0, 180, 160, 0.15); }
+  100% { background-color: transparent; }
+}
+.animate-highlight-entry {
+  animation: highlight-entry 2.5s ease-out forwards;
+  border-radius: 0.5rem;
+}
+
+/* =============================================================================
+   BLOG PROSE STYLES
+   ============================================================================= */
+.blog-prose {
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.8;
+}
+
+.blog-prose h2 {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.blog-prose h3 {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.blog-prose p {
+  margin-bottom: 1.25rem;
+}
+
+.blog-prose strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.blog-prose ul,
+.blog-prose ol {
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.blog-prose ul {
+  list-style-type: disc;
+}
+
+.blog-prose ol {
+  list-style-type: decimal;
+}
+
+.blog-prose li {
+  margin-bottom: 0.5rem;
+}
+
+.blog-prose li > ul,
+.blog-prose li > ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.blog-prose a {
+  color: var(--interactive-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.blog-prose a:hover {
+  color: var(--interactive-accent-hover);
+}
+
+.blog-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.blog-prose thead th {
+  background-color: var(--surface-sunken);
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--border-default);
+}
+
+.blog-prose tbody td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.blog-prose tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.blog-prose blockquote {
+  border-left: 4px solid var(--interactive-accent);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.blog-prose hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 2rem 0;
+}
+
+.blog-prose > *:first-child {
+  margin-top: 0;
+}
+
+.blog-prose > *:last-child {
+  margin-bottom: 0;
+}
+
+/* GFM footnotes (rendered by marked-footnote / remark-gfm).
+   Inline citations render as <sup><a>N</a></sup>; the Sources block lives
+   in a section.footnotes at the bottom of the post. */
+.blog-prose sup {
+  font-size: 0.7em;
+  line-height: 0;
+  vertical-align: super;
+}
+.blog-prose sup a {
+  color: #5eead4; /* teal-300 */
+  text-decoration: none;
+  font-weight: 400;
+}
+.blog-prose sup a:hover {
+  text-decoration: underline;
+}
+.blog-prose section.footnotes {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-default);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.blog-prose section.footnotes ol {
+  padding-left: 1.25rem;
+}
+.blog-prose section.footnotes li {
+  margin-bottom: 0.5rem;
+  color: var(--color-text-muted, #94a3b8);
+}
+.blog-prose .data-footnote-backref,
+.blog-prose .footnote-backref {
+  margin-left: 0.25rem;
+  text-decoration: none;
+}

@@ -1,0 +1,9 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import PushLogPage from '../../components/react/admin/pages/PushLogPage';
+---
+
+<AdminLayout title="Push Log">
+  <PushLogPage client:only="react" />
+</AdminLayout>

@@ -1,0 +1,107 @@
+---
+import type { Locale } from '../../i18n/types';
+import { t } from '../../i18n';
+import { localePath } from '../../i18n/utils';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../convex/_generated/api';
+import MainLayout from '../../layouts/MainLayout.astro';
+import Hero from '../../components/astro/Hero.astro';
+import Card from '../../components/astro/Card.astro';
+import Icon from '../../components/astro/Icon.astro';
+
+const locale = (Astro.currentLocale ?? 'en') as Locale;
+
+// Get Convex URL from environment
+const convexUrl = import.meta.env.PUBLIC_CONVEX_URL;
+
+// Server-side fetch (locale-aware queries return translation-overlaid docs)
+const convex = new ConvexHttpClient(convexUrl as string);
+const posts = await convex.query(api.blogPosts.list, { locale });
+const hubs = await convex.query(api.contentPods.listActive, { locale });
+
+// Edge cache for 5 minutes, serve stale while revalidating for 10 minutes
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+---
+
+<MainLayout title={t(locale, 'meta.blog.title')} description={t(locale, 'meta.blog.description')}>
+  <Fragment slot="head">
+    <link rel="preload" as="image"
+      imagesrcset="https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/d5822c59-bd6a-4b20-fee8-c90bdba64200/medium 768w, https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/d5822c59-bd6a-4b20-fee8-c90bdba64200/large 1440w, https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/d5822c59-bd6a-4b20-fee8-c90bdba64200/hero 1920w"
+      imagesizes="100vw" />
+  </Fragment>
+  <div class="min-h-screen bg-surface-base">
+    <Hero class="py-20">
+      <Fragment slot="background">
+        <div class="absolute inset-0">
+          <img
+            src="https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/d5822c59-bd6a-4b20-fee8-c90bdba64200/medium"
+            srcset="https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/d5822c59-bd6a-4b20-fee8-c90bdba64200/medium 768w, https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/d5822c59-bd6a-4b20-fee8-c90bdba64200/large 1440w, https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/d5822c59-bd6a-4b20-fee8-c90bdba64200/hero 1920w"
+            sizes="100vw"
+            alt="Expedition Insure Blog - guides for polar and safari expedition travel insurance"
+            class="w-full h-full object-cover"
+            fetchpriority="high"
+            width="1920"
+            height="600"
+            decoding="async"
+          />
+          <div class="absolute inset-0 bg-surface-inverse/80"></div>
+        </div>
+      </Fragment>
+      <Fragment slot="title">
+        <h1 class="text-5xl font-bold mb-4 font-display">{t(locale, 'blog.hero.title')}</h1>
+      </Fragment>
+      <Fragment slot="subtitle">
+        <p class="text-xl text-text-inverse-secondary max-w-2xl mx-auto leading-relaxed">{t(locale, 'blog.hero.subtitle')}</p>
+      </Fragment>
+    </Hero>
+
+    <div class="container mx-auto px-4 py-16">
+      {hubs.length > 0 && (
+        <section class="mb-12">
+          <h2 class="text-sm uppercase tracking-wider text-text-secondary mb-4">{t(locale, 'blog.browseByHub')}</h2>
+          <div class="flex flex-wrap gap-2">
+            {hubs.map((hub) => (
+              <a
+                href={localePath(locale, `/hub/${hub.slug}`)}
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-sunken hover:bg-accent hover:text-text-inverse text-sm text-text-primary transition-colors"
+              >
+                <Icon name="tag" size={14} />
+                {hub.name}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {posts.map((post) => (
+          <Card class="group overflow-hidden">
+            <div class="h-48 overflow-hidden">
+              <img src={post.imageUrl} alt={post.title} class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width="400" height="192" />
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-4 text-xs text-text-secondary mb-3">
+                <span class="flex items-center gap-1 bg-surface-sunken px-2 py-1 rounded-full">
+                  <Icon name="tag" size={12} />
+                  {t(locale, `blog.categories.${post.category}`)}
+                </span>
+                <span class="flex items-center gap-1">
+                  <Icon name="clock" size={12} />
+                  {t(locale, 'blog.minRead', { minutes: String(post.readTimeMinutes) })}
+                </span>
+              </div>
+              <a href={localePath(locale, `/blog/${post.slug}`)} class="block">
+                <h2 class="text-xl font-bold text-text-primary mb-3 group-hover:text-accent transition-colors">{post.title}</h2>
+              </a>
+              <p class="text-text-secondary text-sm mb-4 line-clamp-3">{post.excerpt}</p>
+              <a href={localePath(locale, `/blog/${post.slug}`)} class="link-arrow text-sm">
+                {t(locale, 'blog.readArticle')}
+                <Icon name="arrow-right" size={14} class="ml-1" />
+              </a>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  </div>
+</MainLayout>

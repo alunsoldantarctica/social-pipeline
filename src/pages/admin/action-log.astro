@@ -1,0 +1,9 @@
+---
+export const prerender = false;
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import ActionLogPage from '../../components/react/admin/pages/ActionLogPage';
+---
+
+<AdminLayout title="Action Log">
+  <ActionLogPage client:only="react" />
+</AdminLayout>

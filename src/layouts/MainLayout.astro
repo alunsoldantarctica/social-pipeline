@@ -1,0 +1,33 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+}
+
+const {
+  title = 'social-pipeline',
+  description = 'AI-powered content pipeline',
+  ogImage,
+} = Astro.props;
+
+const siteTitle = title !== 'social-pipeline' ? `${title} — social-pipeline` : title;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{siteTitle}</title>
+    <meta name="description" content={description} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta property="og:title" content={siteTitle} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- TODO: Add your font imports here -->
+  </head>
+  <body class="min-h-screen bg-background font-sans text-foreground">
+    <slot />
+  </body>
+</html>

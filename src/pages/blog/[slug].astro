@@ -1,0 +1,186 @@
+---
+// SSR: workflow-published posts must render immediately without a redeploy.
+// Cache-Control below still lets the edge cache per-slug.
+export const prerender = false;
+
+import type { Locale } from '../../i18n/types';
+import { t } from '../../i18n';
+import { localePath } from '../../i18n/utils';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../convex/_generated/api';
+import { marked } from 'marked';
+import markedFootnote from 'marked-footnote';
+
+marked.use(markedFootnote());
+import MainLayout from '../../layouts/MainLayout.astro';
+import Hero from '../../components/astro/Hero.astro';
+import Card from '../../components/astro/Card.astro';
+import Icon from '../../components/astro/Icon.astro';
+
+const locale = (Astro.currentLocale ?? 'en') as Locale;
+// Get slug from URL params
+const { slug } = Astro.params;
+const siteUrl = Astro.site ?? new URL('https://expedition.insure');
+const localizedHomeUrl = new URL(localePath(locale, '/'), siteUrl).href;
+const localizedBlogUrl = new URL(localePath(locale, '/blog'), siteUrl).href;
+const localizedPostUrl = new URL(localePath(locale, `/blog/${slug}`), siteUrl).href;
+
+// Get Convex URL from environment
+const convexUrl = import.meta.env.PUBLIC_CONVEX_URL;
+
+// Server-side fetch using ConvexHttpClient
+const convex = new ConvexHttpClient(convexUrl as string);
+const post = await convex.query(api.blogPosts.getBySlug, { slug: slug!, locale });
+const podContext = await convex.query(api.blogPosts.getPodContext, { slug: slug!, locale });
+
+// Edge-cache for 1 hour, serve stale up to 1 day while revalidating
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+
+// Redirect to blog index if post not found
+if (!post) {
+  return Astro.redirect(localePath(locale, '/blog'));
+}
+
+// Locale-aware query returns translation-overlaid doc
+const localizedPost = post;
+
+// Locale-aware date formatting
+const localeMap: Record<string, string> = { en: 'en-US', fr: 'fr-FR', es: 'es-ES' };
+const formatReadTime = (minutes: number) => t(locale, 'blog.minRead', { minutes: String(minutes) });
+const formatFullDate = (timestamp: number) =>
+  new Intl.DateTimeFormat(localeMap[locale] || 'en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(timestamp));
+
+// Render Markdown content to HTML
+const renderedContent = localizedPost.content ? await marked.parse(localizedPost.content as string) : '';
+---
+
+<MainLayout
+  title={`${localizedPost.title} | ${t(locale, 'blog.hero.title')}`}
+  description={localizedPost.excerpt as string}
+  ogImage={post.imageUrl}
+  ogType="article"
+  publishedAt={post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined}
+  author={post.author}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": localizedPost.title,
+      "description": localizedPost.excerpt,
+      "image": post.imageUrl,
+      "datePublished": post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined,
+      "author": post.author ? { "@type": "Person", "name": post.author } : undefined,
+      "publisher": {
+        "@type": "Organization",
+        "name": "Expedition Insure",
+        "logo": { "@type": "ImageObject", "url": "https://expedition.insure/favicon.svg" }
+      },
+      ...(podContext ? { "isPartOf": { "@type": "CollectionPage", "url": new URL(localePath(locale, `/hub/${podContext.pod.slug}`), siteUrl).href, "name": podContext.pod.name } } : {})
+    })} />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": t(locale, 'blogPost.breadcrumb.home'), "item": localizedHomeUrl },
+        { "@type": "ListItem", "position": 2, "name": t(locale, 'blog.hero.title'), "item": localizedBlogUrl },
+        ...(podContext ? [{ "@type": "ListItem", "position": 3, "name": podContext.pod.name, "item": new URL(localePath(locale, `/hub/${podContext.pod.slug}`), siteUrl).href }] : []),
+        { "@type": "ListItem", "position": podContext ? 4 : 3, "name": localizedPost.title, "item": localizedPostUrl }
+      ]
+    })} />
+  </Fragment>
+  <div class="min-h-screen bg-surface-base">
+    <!-- Header Section -->
+    <Hero class="py-20">
+      <a href={localePath(locale, '/blog')} class="inline-flex items-center gap-2 text-text-inverse-secondary hover:text-text-inverse transition-colors mb-8">
+        <Icon name="arrow-left" size={18} />
+        {t(locale, 'blogPost.backToJournal')}
+      </a>
+      <Fragment slot="title">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 font-display">{localizedPost.title}</h1>
+      </Fragment>
+      <div class="flex items-center justify-center gap-4 text-sm text-text-inverse-secondary mt-6 flex-wrap">
+        <span class="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full">
+          <Icon name="tag" size={14} />
+          {t(locale, `blog.categories.${post.category}`)}
+        </span>
+        <span class="flex items-center gap-1">
+          <Icon name="clock" size={14} />
+          {formatReadTime(post.readTimeMinutes)}
+        </span>
+        {post.publishedAt && (
+          <span class="flex items-center gap-1">
+            <Icon name="calendar" size={14} />
+            {formatFullDate(post.publishedAt)}
+          </span>
+        )}
+      </div>
+    </Hero>
+
+    <!-- Content Section -->
+    <div class="container mx-auto px-4 py-16 max-w-3xl">
+      {post.imageUrl && (
+        <div class="rounded-xl overflow-hidden shadow-lg mb-8 -mt-24 relative z-10">
+          <img src={post.imageUrl} alt={localizedPost.title as string} class="w-full h-72 object-cover" loading="lazy" width="1200" height="480" decoding="async" />
+        </div>
+      )}
+
+      <Card variant="elevated" class="p-8 md:p-12">
+        {renderedContent ? (
+          <div class="blog-prose" set:html={renderedContent} />
+        ) : (
+          <div class="text-text-tertiary text-lg text-center py-12">
+            <p class="text-2xl mb-2">{t(locale, 'blogPost.comingSoon')}</p>
+            <p>{t(locale, 'blogPost.comingSoonDetail')}</p>
+          </div>
+        )}
+      </Card>
+
+      {post.author && (
+        <Card variant="elevated" class="mt-8 p-6 flex items-center gap-4">
+          <div class="w-16 h-16 bg-surface-inverse rounded-full flex items-center justify-center text-text-inverse text-2xl font-bold">
+            {post.author.charAt(0)}
+          </div>
+          <div>
+            <p class="text-sm text-text-secondary">{t(locale, 'blogPost.writtenBy')}</p>
+            <p class="text-lg font-bold text-text-primary">{post.author}</p>
+          </div>
+        </Card>
+      )}
+
+      {podContext && podContext.siblings.length > 0 && (
+        <section class="mt-12">
+          <div class="flex items-baseline justify-between mb-6">
+            <h2 class="text-2xl font-bold text-text-primary font-display">{t(locale, 'blog.moreFromHub')}</h2>
+            <a href={localePath(locale, `/hub/${podContext.pod.slug}`)} class="link-accent text-sm">
+              {podContext.pod.name}
+              <Icon name="arrow-right" size={14} class="ml-1" />
+            </a>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {podContext.siblings.map((sib) => (
+              <Card class="group overflow-hidden">
+                <div class="h-32 overflow-hidden">
+                  <img src={sib.imageUrl} alt={sib.title} class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width="400" height="128" />
+                </div>
+                <div class="p-5">
+                  <a href={localePath(locale, `/blog/${sib.slug}`)} class="block">
+                    <h3 class="text-base font-bold text-text-primary mb-2 group-hover:text-accent transition-colors line-clamp-2">{sib.title}</h3>
+                  </a>
+                  <p class="text-text-secondary text-xs line-clamp-2">{sib.excerpt}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div class="mt-12 text-center">
+        <a href={localePath(locale, '/blog')} class="link-accent inline-flex items-center gap-2 hover:gap-3 transition-all">
+          <Icon name="arrow-left" size={18} />
+          {t(locale, 'blogPost.moreArticles')}
+        </a>
+      </div>
+    </div>
+  </div>
+</MainLayout>
