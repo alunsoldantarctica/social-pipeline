@@ -1,5 +1,7 @@
 # social-pipeline
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/alunsoldantarctica/social-pipeline)
+
 An open-source AI content pipeline scaffold. Research → Outline → Draft → Publish with per-stage model selection, cost tracking, editable prompts and editorial rules, competitor intelligence, multi-platform publishing.
 
 Built with **Astro 6 + Convex + Cloudflare Workers + OpenRouter via Cloudflare AI Gateway**.
@@ -27,14 +29,14 @@ Built with **Astro 6 + Convex + Cloudflare Workers + OpenRouter via Cloudflare A
 
 **Multi-platform publishing** — see [`docs/social-publishing.md`](docs/social-publishing.md)
 - **Zernio** for X / LinkedIn / Threads / IG / 11 more — drop in API key + profile IDs.
-- **Resend** for newsletter broadcasts — reuses the same Resend key already wired for OTP auth.
+- **Resend** for newsletter broadcasts — configure `AUTH_RESEND_KEY` in the Convex dashboard.
 - Auto-publish gated by config; failures land on `articleWorkflows.socialPublish` and can be retried.
 
 **Competitor intelligence**
 - Scrape competitor URLs → LLM-tag content → cluster matrix and gap analysis → generate briefs that feed the pipeline.
 
 **Operations**
-- Convex Auth: Google OAuth + email OTP via Resend (8-digit, 15-min expiry).
+- Convex Auth: Google OAuth (sign-in via Google).
 - Web push notifications when a draft hits review.
 - Action log: audit trail of every pipeline state change.
 - Public blog: scheduled publishing, edge cache, i18n translation overlay, in-browser markdown editor.
@@ -53,10 +55,10 @@ Built with **Astro 6 + Convex + Cloudflare Workers + OpenRouter via Cloudflare A
 | Service | Purpose | Free tier |
 |---|---|---|
 | [Cloudflare](https://cloudflare.com) | Workers (host), KV (sessions), Images (media), AI Gateway (LLM router) | Yes |
-| [Convex](https://convex.dev) | DB + serverless functions + workflows + agents + auth | Yes (generous) |
+| [Convex](https://convex.dev/referral/ALSTEM6599) | DB + serverless functions + workflows + agents + auth | Yes (generous) |
 | [OpenRouter](https://openrouter.ai) | LLM provider (200+ models incl. Perplexity Sonar for research) | Pay-per-use |
 | [Firecrawl](https://firecrawl.dev) | Research agent + competitor scraping + niche-generator site extract | 500 pages/mo free |
-| [Resend](https://resend.com) | Email OTP (auth) + newsletter broadcasts (publishing) | Yes |
+| [Resend](https://resend.com) | Newsletter broadcasts (publishing) | Yes |
 | [Zernio](https://zernio.com) | Optional — social publishing aggregator | 20 posts/mo free |
 
 ---
