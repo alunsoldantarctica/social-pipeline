@@ -39,6 +39,7 @@ In the [Convex dashboard](https://dashboard.convex.dev) under your deployment â†
 | `ADMIN_API_TOKEN` | Generate: `openssl rand -hex 32` |
 | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `FIRECRAWL_API_KEY` | [firecrawl.dev](https://firecrawl.dev) |
+| `ZERNIO_API_KEY` | Optional â€” [Zernio](https://zernio.com/signup?ref=432A6295) for social publishing (X, LinkedIn, Threads, etc.) |
 
 For Google OAuth, set the authorized redirect URI in Google Cloud Console to:
 ```

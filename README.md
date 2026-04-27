@@ -59,7 +59,7 @@ Built with **Astro 6 + Convex + Cloudflare Workers + OpenRouter via Cloudflare A
 | [OpenRouter](https://openrouter.ai) | LLM provider (200+ models incl. Perplexity Sonar for research) | Pay-per-use |
 | [Firecrawl](https://firecrawl.dev) | Research agent + competitor scraping + niche-generator site extract | 500 pages/mo free |
 | [Resend](https://resend.com) | Newsletter broadcasts (publishing) | Yes |
-| [Zernio](https://zernio.com) | Optional — social publishing aggregator | 20 posts/mo free |
+| [Zernio](https://zernio.com/signup?ref=432A6295) | Optional — social publishing aggregator | 20 posts/mo free |
 
 ---
 
