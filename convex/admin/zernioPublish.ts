@@ -272,7 +272,7 @@ export const publishWorkflow = internalAction({
   },
 });
 
-function extractPostIds(result: unknown): string[] | undefined {
+export function extractPostIds(result: unknown): string[] | undefined {
   if (!result || typeof result !== "object") return undefined;
   const obj = result as Record<string, unknown>;
   const posts = obj.posts ?? obj.data;

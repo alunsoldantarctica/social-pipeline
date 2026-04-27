@@ -106,15 +106,60 @@ Pass `scheduledAt` (Unix ms) to schedule rather than publish now.
 
 Format adapters in `convex/agents/formatAdapters.ts` already shape the draft for each platform; `formatForPlatform` in `zernioPublish.ts` does a final pass for Zernio's plain-text content body.
 
-## Newsletter delivery
+## Newsletter delivery (Resend)
 
-Zernio does **not** handle email newsletters. For email delivery, consider:
+`newsletter_issue` workflows publish to Resend, not Zernio. The integration lives in `convex/admin/resendNewsletter.ts` and reuses the same `AUTH_RESEND_KEY` that the OTP auth flow uses — no new env var needed.
 
-- **[Resend](https://resend.com)** — transactional + broadcast, clean API, good free tier
-- **[Beehiiv](https://beehiiv.com)** — newsletter platform with its own API, audience management
-- **[ConvertKit (Kit)](https://kit.com)** — creator-focused, tag-based segmentation
+### Setup
 
-The `newsletter_issue` format outputs a structured draft (subject, preview, sections, CTA). Send it to your newsletter tool's API instead of Zernio.
+1. **Create an audience** in the Resend dashboard (Audiences → New audience).
+2. **Configure** via `updateResendConfig`:
+
+   ```bash
+   pnpx convex run admin/resendNewsletter:updateResendConfig '{
+     "autoSend": true,
+     "audienceId": "aud_abc...",
+     "fromAddress": "Your Brand <hello@your-domain.com>",
+     "replyTo": "support@your-domain.com"
+   }'
+   ```
+
+3. **Verify** with `testResendConnection`:
+
+   ```bash
+   pnpx convex run admin/resendNewsletter:testResendConnection '{}'
+   ```
+
+### How it works
+
+The `newsletter_issue` format adapter (`convex/agents/formatAdapters.ts`) instructs the draft agent to emit a structured body with H3 sections — `### SUBJECT`, `### PREVIEW`, `### INTRO`, `### MAIN STORY`, `### QUICK HITS`, `### CTA`. After draft approval, the workflow:
+
+1. Parses the draft via `parseNewsletterDraft` into `{subject, preview, bodyMarkdown}`.
+2. Renders `bodyMarkdown` to HTML with `marked`.
+3. Creates a Resend broadcast via `POST /broadcasts`.
+4. Sends or schedules it via `POST /broadcasts/:id/send`.
+5. Records the broadcast ID on `articleWorkflows.socialPublish` (provider="resend").
+
+### Manual send / retry
+
+```bash
+pnpx convex run admin/resendNewsletter:manualSendNewsletter \
+  '{"id": "j97abc..."}'
+```
+
+### Public functions
+
+| Function | Type | Purpose |
+|---|---|---|
+| `getResendConfig` | `adminQuery` | Read audience/from-address config |
+| `updateResendConfig` | `adminMutation` | Save audience/from-address config |
+| `listResendAudiences` | `adminAction` | Fetch audiences from Resend |
+| `testResendConnection` | `adminAction` | Verify credentials |
+| `manualSendNewsletter` | `adminAction` | Force-send (or re-send) one workflow |
+
+### Other email tools
+
+If you'd rather use Beehiiv, ConvertKit, etc., the integration shape (parser → broadcast API call → status on `socialPublish`) ports cleanly. Replace the two `resendFetch` calls in `sendNewsletterWorkflow` with the equivalent.
 
 ## Public functions
 

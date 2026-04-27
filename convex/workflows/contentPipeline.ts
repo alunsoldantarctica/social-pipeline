@@ -417,23 +417,44 @@ export const contentPipelineWorkflow = workflowManager.define({
       status: "completed",
     });
 
-    // Auto-publish to Zernio when configured. Non-fatal — a failure here
-    // leaves the workflow "completed" with socialPublish.status="failed";
-    // the admin can retry via manualPublishWorkflow.
+    // Auto-publish to the right adapter based on outputFormat. Non-fatal —
+    // a failure here leaves the workflow "completed" with
+    // socialPublish.status="failed"; the admin can retry via the manual
+    // adapter actions (manualPublishWorkflow / manualSendNewsletter).
     try {
-      const settings = await step.runQuery(
-        internal.admin.zernioPublish._readZernioRow,
-        {},
-      );
-      const autoPublish = (settings as { zernioAutoPublish?: boolean } | null)?.zernioAutoPublish ?? false;
-      if (autoPublish) {
-        await step.runAction(internal.admin.zernioPublish.publishWorkflow, {
-          workflowRecordId,
-          scheduledAt: scheduledPublishAt,
-        });
+      const wfRecord = await step.runQuery(internal.admin.contentPipeline.getWorkflow, {
+        id: workflowRecordId,
+      });
+      const outputFormat = wfRecord?.outputFormat ?? "blog_post";
+
+      if (outputFormat === "newsletter_issue") {
+        const resend = await step.runQuery(
+          internal.admin.resendNewsletter._readResendRow,
+          {},
+        );
+        const autoSend = (resend as { resendAutoSend?: boolean } | null)?.resendAutoSend ?? false;
+        if (autoSend) {
+          await step.runAction(internal.admin.resendNewsletter.sendNewsletterWorkflow, {
+            workflowRecordId,
+            scheduledAt: scheduledPublishAt,
+          });
+        }
+      } else if (outputFormat === "twitter_thread" || outputFormat === "linkedin_article") {
+        const zernio = await step.runQuery(
+          internal.admin.zernioPublish._readZernioRow,
+          {},
+        );
+        const autoPublish = (zernio as { zernioAutoPublish?: boolean } | null)?.zernioAutoPublish ?? false;
+        if (autoPublish) {
+          await step.runAction(internal.admin.zernioPublish.publishWorkflow, {
+            workflowRecordId,
+            scheduledAt: scheduledPublishAt,
+          });
+        }
       }
+      // blog_post: no external publish — internal blog handles it.
     } catch (error) {
-      console.error("[content-pipeline] Zernio auto-publish failed:", error);
+      console.error("[content-pipeline] auto-publish failed:", error);
     }
 
     return {
