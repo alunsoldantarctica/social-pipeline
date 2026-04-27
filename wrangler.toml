@@ -13,6 +13,8 @@ id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
 
 # Environment variables
 [vars]
+# Production canonical site URL — also used by Astro at build time via process.env.SITE_URL
+SITE_URL = "https://your-domain.com"
 # Run: pnpx convex dev  (first time — creates your deployment and prints the URL)
 PUBLIC_CONVEX_URL = "https://your-deployment.convex.cloud"
 # Run: npx web-push generate-vapid-keys  to generate VAPID keys for push notifications
@@ -34,6 +36,7 @@ name = "social-pipeline-dev"
 workers_dev = true
 
 [env.dev.vars]
+SITE_URL = "https://dev.your-domain.com"
 PUBLIC_CONVEX_URL = "https://your-dev-deployment.convex.cloud"
 PUBLIC_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
 CLOUDFLARE_IMAGES_HASH = "REPLACE_WITH_YOUR_IMAGES_HASH"

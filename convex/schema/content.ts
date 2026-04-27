@@ -17,10 +17,14 @@ export const contentTables = {
     publishedAt: v.optional(v.number()),
     scheduledPublishAt: v.optional(v.number()),
     scheduledFunctionId: v.optional(v.string()),
+    // Forward-compat for multi-tenant. Undefined = "default workspace".
+    // Code does not yet require this; left optional so existing rows are valid.
+    workspaceId: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_slug", ["slug"])
-    .index("by_published", ["isPublished", "publishedAt"]),
+    .index("by_published", ["isPublished", "publishedAt"])
+    .index("by_workspace", ["workspaceId", "isPublished", "publishedAt"]),
 
   // ===== CONTENT PIPELINE =====
 
@@ -63,9 +67,30 @@ export const contentTables = {
     threadId: v.optional(v.string()),
     workflowId: v.optional(v.string()),
     blogPostId: v.optional(v.id("blogPosts")),
+    // Forward-compat for multi-tenant — see blogPosts comment.
+    workspaceId: v.optional(v.string()),
+    socialPublish: v.optional(v.object({
+      status: v.union(
+        v.literal("pending"),
+        v.literal("published"),
+        v.literal("failed"),
+        v.literal("skipped"),
+      ),
+      provider: v.union(v.literal("zernio"), v.literal("resend")),
+      // Zernio: profileIds = social profile IDs targeted
+      // Resend: profileIds = audience IDs targeted (Resend's "audience" concept)
+      profileIds: v.optional(v.array(v.string())),
+      // Zernio: postIds = social post IDs returned. Resend: broadcast ID(s).
+      postIds: v.optional(v.array(v.string())),
+      scheduledAt: v.optional(v.number()),
+      publishedAt: v.optional(v.number()),
+      attemptedAt: v.optional(v.number()),
+      error: v.optional(v.string()),
+    })),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_status", ["status"]),
+  }).index("by_status", ["status"])
+    .index("by_workspace", ["workspaceId", "status"]),
 
   // ===== CONTENT TRANSLATIONS (i18n overlay) =====
 

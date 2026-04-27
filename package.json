@@ -8,7 +8,12 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.15",
@@ -20,6 +25,9 @@
     "@convex-dev/agent": "https://pkg.pr.new/zboyles/agent/@convex-dev/agent@e43c4b9",
     "@convex-dev/auth": "^0.0.90",
     "@convex-dev/workflow": "^0.3.3",
+    "@fontsource/cormorant-garamond": "^5.1.0",
+    "@fontsource/fira-code": "^5.1.0",
+    "@fontsource/space-grotesk": "^5.1.0",
     "@nanostores/react": "^0.8.4",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",
@@ -43,6 +51,7 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
+    "sanitize-html": "^2.17.3",
     "tailwind-merge": "^2.2.0",
     "web-push": "^3.6.7",
     "zod": "^4.3.5"
@@ -55,14 +64,18 @@
     ]
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@cloudflare/workers-types": "^4.20260421.1",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
+    "@types/sanitize-html": "^2.16.1",
     "autoprefixer": "^10.4.20",
+    "convex-test": "^0.0.41",
     "postcss": "^8.4.47",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.6.2",
+    "vitest": "^2.1.8",
     "wrangler": "^4.84.0"
   }
 }

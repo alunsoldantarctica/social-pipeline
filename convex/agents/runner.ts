@@ -14,13 +14,20 @@ import { Agent, createThread, stepCountIs } from "@convex-dev/agent";
 import { components } from "../_generated/api";
 import { createModelFromConfig, type GatewayProvider } from "./config";
 import { userContentBlock } from "./contentSafety";
-import {
-  researchInstructions,
-  outlineInstructions,
-  draftInstructions,
-} from "./instructions";
-import { draftInstructionsForFormat } from "./formatAdapters";
 import { searchWeb, scrapeUrl } from "./tools/firecrawl";
+
+type DraftFormat = "twitter_thread" | "linkedin_article" | "newsletter_issue";
+
+async function loadInstruction(
+  ctx: { runQuery: (q: any, args: any) => Promise<string> },
+  stage: "research" | "outline" | "draft",
+  format?: DraftFormat,
+): Promise<string> {
+  return await ctx.runQuery(internal.agents.instructionsResolver.resolve, {
+    stage,
+    format,
+  });
+}
 
 type TokenUsage = {
   inputTokens: number;
@@ -152,7 +159,8 @@ export const runResearch = internalAction({
     const model = createModelFromConfig(modelProvider, modelId);
 
     const useBuiltInSearch: boolean = modelId.includes("sonar");
-    const instructions = await withEditorialContext(ctx, researchInstructions);
+    const baseResearch = await loadInstruction(ctx, "research");
+    const instructions = await withEditorialContext(ctx, baseResearch);
     const researchAgent = new Agent(components.agent, {
       name: "ResearchAgent",
       languageModel: model,
@@ -289,7 +297,8 @@ export const runOutline = internalAction({
 
     const model = createModelFromConfig(modelProvider, modelId);
 
-    const instructions = await withEditorialContext(ctx, outlineInstructions);
+    const baseOutline = await loadInstruction(ctx, "outline");
+    const instructions = await withEditorialContext(ctx, baseOutline);
     const outlineAgent = new Agent(components.agent, {
       name: "OutlineAgent",
       languageModel: model,
@@ -408,12 +417,23 @@ export const runDraft = internalAction({
 
     const model = createModelFromConfig(modelProvider, modelId);
 
-    // Inject format-adapter instructions if a non-default format is set
+    // Inject format-adapter instructions if a non-default format is set.
+    // Both base draft body and format adapter are loaded from the resolver
+    // (DB-driven; falls back to convex/agents/instructions.ts and
+    // convex/agents/formatAdapters.ts constants when no override exists).
     const outputFormat: string | undefined = workflow.outputFormat;
-    const formatBlock = draftInstructionsForFormat(outputFormat);
+    const baseDraft = await loadInstruction(ctx, "draft");
+    const formatBlock =
+      outputFormat &&
+      outputFormat !== "blog_post" &&
+      (outputFormat === "twitter_thread" ||
+        outputFormat === "linkedin_article" ||
+        outputFormat === "newsletter_issue")
+        ? await loadInstruction(ctx, "draft", outputFormat as DraftFormat)
+        : "";
     const baseWithFormat = formatBlock
-      ? `${draftInstructions}\n\n${formatBlock}`
-      : draftInstructions;
+      ? `${baseDraft}\n\n${formatBlock}`
+      : baseDraft;
 
     const instructions = await withEditorialContext(ctx, baseWithFormat);
     const draftAgent = new Agent(components.agent, {

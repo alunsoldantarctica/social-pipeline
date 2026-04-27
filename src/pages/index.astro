@@ -1,28 +1,189 @@
 ---
-// TODO: Replace with your site's landing page
+import MainLayout from '../layouts/MainLayout.astro';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../convex/_generated/api';
+
+// Pull latest blog posts so the landing page is non-empty out of the box.
+// Locale defaults to English; the blog page handles the i18n overlay.
+const convexUrl = import.meta.env.PUBLIC_CONVEX_URL as string | undefined;
+let recentPosts: Array<{
+  slug: string;
+  title: string;
+  excerpt: string;
+  imageUrl: string;
+  readTimeMinutes: number;
+  category: string;
+  publishedAt?: number;
+}> = [];
+
+if (convexUrl) {
+  try {
+    const convex = new ConvexHttpClient(convexUrl);
+    const posts = await convex.query(api.blogPosts.list, { locale: 'en' });
+    recentPosts = posts.slice(0, 3);
+  } catch (e) {
+    console.warn('[index] failed to fetch blog posts:', e);
+  }
+}
+
+// Edge-cache hourly; serve stale up to a day.
+Astro.response.headers.set(
+  'Cache-Control',
+  'public, s-maxage=3600, stale-while-revalidate=86400',
+);
+
+const features = [
+  {
+    title: 'Research → Outline → Draft',
+    body: 'A 5-stage editorial pipeline with revision loops at every step. Editors approve, revise, or reject — the workflow keeps state.',
+  },
+  {
+    title: 'Per-stage model selection',
+    body: 'Swap research, outline, or draft to any OpenRouter / Workers AI model. All inference funnels through Cloudflare AI Gateway for spend caps.',
+  },
+  {
+    title: 'Editable prompts and rules',
+    body: 'Agent prompts and editorial rules live in the database. Edit at runtime — no deploy needed.',
+  },
+  {
+    title: 'Competitor intelligence',
+    body: 'Scrape competitor URLs, tag with an LLM, surface gaps as briefs that feed straight into the pipeline.',
+  },
+  {
+    title: 'Cost tracking',
+    body: 'Estimated and actual token spend per workflow, per stage, per model. Reconcile your budget assumptions against reality.',
+  },
+  {
+    title: 'Multi-platform publish',
+    body: 'Blog post by default. Approve a draft and the same content can ship to X, LinkedIn (via Zernio) or your newsletter audience (via Resend).',
+  },
+];
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>social-pipeline</title>
-    <link rel="stylesheet" href="/src/styles/global.css" />
-  </head>
-  <body class="bg-gray-50 min-h-screen flex items-center justify-center">
-    <div class="text-center max-w-md mx-auto px-6">
-      <h1 class="text-3xl font-bold text-gray-900 mb-4">social-pipeline</h1>
-      <p class="text-gray-500 mb-8">AI-powered content generation scaffold</p>
-      <a
-        href="/admin"
-        class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-      >
-        Open Admin →
-      </a>
-      <p class="mt-4 text-sm text-gray-400">
-        <a href="/blog" class="hover:text-gray-600">View Blog</a>
-      </p>
-    </div>
-  </body>
-</html>
+<MainLayout
+  title="social-pipeline"
+  description="An AI content pipeline scaffold — research, outline, draft, publish."
+>
+  <main class="min-h-screen">
+    <!-- Hero -->
+    <section class="relative overflow-hidden border-b border-slate-800">
+      <div class="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-black"></div>
+      <div class="relative max-w-6xl mx-auto px-6 py-24 sm:py-32">
+        <p class="text-sm uppercase tracking-widest text-teal-400 mb-4">
+          AI content pipeline scaffold
+        </p>
+        <h1 class="font-display text-5xl sm:text-7xl font-bold text-white leading-tight max-w-4xl">
+          Research, outline, draft, publish — with editorial control.
+        </h1>
+        <p class="mt-6 text-lg text-slate-300 max-w-2xl leading-relaxed">
+          Open-source AI content workflow on Astro, Convex and Cloudflare Workers.
+          Per-stage model selection, DB-driven prompts and editorial rules,
+          competitor intelligence, cost tracking, multi-platform publishing.
+        </p>
+        <div class="mt-10 flex flex-wrap gap-3">
+          <a
+            href="/admin"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium transition-colors"
+          >
+            Open Admin →
+          </a>
+          <a
+            href="/blog"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-lg font-medium border border-slate-700 transition-colors"
+          >
+            View Blog
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="border-b border-slate-800">
+      <div class="max-w-6xl mx-auto px-6 py-20">
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-white mb-12">
+          What's in the box
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((f) => (
+            <div class="bg-slate-900 border border-slate-800 rounded-lg p-6 hover:border-slate-700 transition-colors">
+              <h3 class="text-lg font-semibold text-white mb-2">{f.title}</h3>
+              <p class="text-sm text-slate-400 leading-relaxed">{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent posts (only renders if Convex is reachable + has published posts) -->
+    {recentPosts.length > 0 && (
+      <section class="border-b border-slate-800">
+        <div class="max-w-6xl mx-auto px-6 py-20">
+          <div class="flex items-end justify-between mb-12 flex-wrap gap-4">
+            <h2 class="font-display text-3xl sm:text-4xl font-bold text-white">
+              Latest from the blog
+            </h2>
+            <a href="/blog" class="text-teal-400 hover:text-teal-300 text-sm font-medium">
+              See all posts →
+            </a>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {recentPosts.map((post) => (
+              <a
+                href={`/blog/${post.slug}`}
+                class="block bg-slate-900 border border-slate-800 rounded-lg overflow-hidden hover:border-slate-700 transition-colors group"
+              >
+                <div class="aspect-video bg-slate-800 overflow-hidden">
+                  <img
+                    src={post.imageUrl}
+                    alt={post.title}
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                <div class="p-6">
+                  <div class="flex items-center gap-3 text-xs text-slate-500 mb-3">
+                    <span class="px-2 py-0.5 bg-slate-800 rounded-full">{post.category}</span>
+                    <span>{post.readTimeMinutes} min read</span>
+                  </div>
+                  <h3 class="text-lg font-semibold text-white group-hover:text-teal-300 transition-colors mb-2 line-clamp-2">
+                    {post.title}
+                  </h3>
+                  <p class="text-sm text-slate-400 line-clamp-3">{post.excerpt}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- CTA -->
+    <section>
+      <div class="max-w-4xl mx-auto px-6 py-20 text-center">
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-white mb-6">
+          Ready to ship?
+        </h2>
+        <p class="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">
+          Configure your niche, customize the prompts, and let the pipeline
+          turn topics into review-ready drafts.
+        </p>
+        <a
+          href="/admin"
+          class="inline-flex items-center gap-2 px-8 py-4 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium text-lg transition-colors"
+        >
+          Open Admin →
+        </a>
+      </div>
+    </section>
+
+    <footer class="border-t border-slate-800">
+      <div class="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between text-sm text-slate-500">
+        <span>social-pipeline</span>
+        <span>
+          <a href="https://github.com/" class="hover:text-slate-300">Source</a>
+        </span>
+      </div>
+    </footer>
+  </main>
+</MainLayout>

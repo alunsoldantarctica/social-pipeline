@@ -18,35 +18,17 @@ Zernio (formerly Late/getlate.dev) is a unified social media publishing API that
 
 No overage fees — exceeding limits pauses posting until you upgrade.
 
-## API Reference
+## How it's wired
 
-**Base URL**: `https://api.zernio.com/api/v1`
+The integration lives in `convex/admin/zernioPublish.ts` and is invoked at the end of the content pipeline workflow (`convex/workflows/contentPipeline.ts`):
 
-**Authentication**: Bearer token (`sk_` prefix + 64 hex chars)
+1. After the draft is approved and the blog post is created, the workflow reads the `zernio` row from `siteSettings`.
+2. If `autoPublish` is true, it calls `internal.admin.zernioPublish.publishWorkflow` for the workflow.
+3. `publishWorkflow` looks up the profile IDs for the workflow's `outputFormat`, formats the draft for the platform (see `formatForPlatform`), and POSTs to `/api/v1/posts`.
+4. The result is recorded on `articleWorkflows.socialPublish` (`status`, `postIds`, `error`, etc.).
+5. Failures are non-fatal — the workflow stays `completed` and you can retry from the admin UI.
 
-```
-Authorization: Bearer sk_abc123...
-```
-
-**Create/schedule a post**:
-```
-POST /api/v1/posts
-{
-  "profiles": ["profile_id_1", "profile_id_2"],
-  "content": {
-    "text": "Your post content here",
-    "media": ["https://imagedelivery.net/hash/image-id/public"]  // optional
-  },
-  "scheduledAt": "2026-05-01T10:00:00Z"  // optional, ISO 8601
-}
-```
-
-**List connected profiles** (to get profile IDs):
-```
-GET /api/v1/profiles
-```
-
-No official TypeScript/JavaScript SDK as of April 2026 — the integration uses raw `fetch`.
+For `outputFormat = "blog_post"` the publish is skipped (the internal blog handles that). For `newsletter_issue`, Zernio is invoked but consider switching to a real newsletter tool (see below).
 
 ## Setup
 
@@ -64,59 +46,144 @@ Zernio Dashboard → Settings → API → Generate API key (starts with `sk_`)
 # In .env.local
 ZERNIO_API_KEY=sk_your_key_here
 
-# In Convex environment
+# In Convex environment (this is what publishToZernio actually reads)
 pnpx convex env set ZERNIO_API_KEY "sk_your_key_here"
 ```
 
-### 4. Get your profile IDs
+### 4. Discover your profile IDs
 
 ```bash
-# Run the listZernioProfiles action from the Convex dashboard
+# As an authed admin (browser) you can also run this from the admin UI;
+# from the CLI pass an admin API token:
 pnpx convex run admin/zernioPublish:listZernioProfiles '{}'
 ```
 
 Note the profile IDs for the platforms you want to target.
 
-### 5. Wire the publish action
+### 5. Save the profile mapping
 
-In `convex/admin/contentPipeline.ts`, find the `approveForPublish` mutation and add the Zernio call:
+Call `updateZernioConfig` once with your profile IDs grouped by output format. Example:
 
-```ts
-import { internal } from "../_generated/api";
-
-// After creating the blogPost record...
-if (workflow.outputFormat === "twitter_thread") {
-  const threadContent = formatThreadForZernio(draftOutput.content);
-  await ctx.scheduler.runAfter(0, internal.admin.zernioPublish.publishToZernio, {
-    workflowRecordId: args.id,
-    profiles: ["your_twitter_profile_id"],
-    content: threadContent,
-  });
-}
+```bash
+pnpx convex run admin/zernioPublish:updateZernioConfig '{
+  "autoPublish": true,
+  "profilesByFormat": {
+    "twitter_thread": ["prof_x_main"],
+    "linkedin_article": ["prof_li_company"],
+    "newsletter_issue": []
+  }
+}'
 ```
+
+`autoPublish: true` makes the workflow auto-publish after a draft is approved. Set to `false` to gate publishing behind the manual trigger.
+
+### 6. (Optional) Verify
+
+```bash
+pnpx convex run admin/zernioPublish:testZernioConnection '{}'
+# → { ok: true, profiles: [...] } or { ok: false, error: "..." }
+```
+
+## Manual publishing
+
+To publish a workflow that's already `completed` (e.g. one that failed, or that was created before `autoPublish` was enabled):
+
+```bash
+pnpx convex run admin/zernioPublish:manualPublishWorkflow \
+  '{"id": "j97abc...articleWorkflowsId"}'
+```
+
+Pass `scheduledAt` (Unix ms) to schedule rather than publish now.
 
 ## Format-to-platform mapping
 
-| `outputFormat` | Recommended platform |
+| `outputFormat` | Behavior |
 |---|---|
-| `blog_post` | Internal blog only (no Zernio needed) |
-| `twitter_thread` | X/Twitter |
-| `linkedin_article` | LinkedIn |
-| `newsletter_issue` | Your newsletter tool (Beehiiv, Resend, etc.) |
+| `blog_post` | Skipped — internal blog only |
+| `twitter_thread` | Joined by blank lines, sent to configured X profiles |
+| `linkedin_article` | Markdown stripped (headings, bold, bullets), sent to LinkedIn profiles |
+| `newsletter_issue` | Sent as plain markdown — but consider a real newsletter tool below |
 
-## Newsletter delivery
+Format adapters in `convex/agents/formatAdapters.ts` already shape the draft for each platform; `formatForPlatform` in `zernioPublish.ts` does a final pass for Zernio's plain-text content body.
 
-Zernio does **not** handle email newsletters. For email delivery, consider:
+## Newsletter delivery (Resend)
 
-- **[Resend](https://resend.com)** — transactional + broadcast, clean API, good free tier
-- **[Beehiiv](https://beehiiv.com)** — newsletter platform with its own API, audience management
-- **[ConvertKit (Kit)](https://kit.com)** — creator-focused, tag-based segmentation
+`newsletter_issue` workflows publish to Resend, not Zernio. The integration lives in `convex/admin/resendNewsletter.ts` and reuses the same `AUTH_RESEND_KEY` that the OTP auth flow uses — no new env var needed.
 
-The `newsletter_issue` format outputs a structured draft (subject, preview, sections, CTA). You'd post the content to your newsletter tool's API to send.
+### Setup
+
+1. **Create an audience** in the Resend dashboard (Audiences → New audience).
+2. **Configure** via `updateResendConfig`:
+
+   ```bash
+   pnpx convex run admin/resendNewsletter:updateResendConfig '{
+     "autoSend": true,
+     "audienceId": "aud_abc...",
+     "fromAddress": "Your Brand <hello@your-domain.com>",
+     "replyTo": "support@your-domain.com"
+   }'
+   ```
+
+3. **Verify** with `testResendConnection`:
+
+   ```bash
+   pnpx convex run admin/resendNewsletter:testResendConnection '{}'
+   ```
+
+### How it works
+
+The `newsletter_issue` format adapter (`convex/agents/formatAdapters.ts`) instructs the draft agent to emit a structured body with H3 sections — `### SUBJECT`, `### PREVIEW`, `### INTRO`, `### MAIN STORY`, `### QUICK HITS`, `### CTA`. After draft approval, the workflow:
+
+1. Parses the draft via `parseNewsletterDraft` into `{subject, preview, bodyMarkdown}`.
+2. Renders `bodyMarkdown` to HTML with `marked`.
+3. Creates a Resend broadcast via `POST /broadcasts`.
+4. Sends or schedules it via `POST /broadcasts/:id/send`.
+5. Records the broadcast ID on `articleWorkflows.socialPublish` (provider="resend").
+
+### Manual send / retry
+
+```bash
+pnpx convex run admin/resendNewsletter:manualSendNewsletter \
+  '{"id": "j97abc..."}'
+```
+
+### Public functions
+
+| Function | Type | Purpose |
+|---|---|---|
+| `getResendConfig` | `adminQuery` | Read audience/from-address config |
+| `updateResendConfig` | `adminMutation` | Save audience/from-address config |
+| `listResendAudiences` | `adminAction` | Fetch audiences from Resend |
+| `testResendConnection` | `adminAction` | Verify credentials |
+| `manualSendNewsletter` | `adminAction` | Force-send (or re-send) one workflow |
+
+### Other email tools
+
+If you'd rather use Beehiiv, ConvertKit, etc., the integration shape (parser → broadcast API call → status on `socialPublish`) ports cleanly. Replace the two `resendFetch` calls in `sendNewsletterWorkflow` with the equivalent.
+
+## Public functions
+
+| Function | Type | Purpose |
+|---|---|---|
+| `getZernioConfig` | `adminQuery` | Read current profile config (no API key leaked) |
+| `updateZernioConfig` | `adminMutation` | Save profile mapping + autoPublish toggle |
+| `listZernioProfiles` | `adminAction` | Fetch connected profiles from Zernio |
+| `testZernioConnection` | `adminAction` | Same as above but returns `{ok, error?}` |
+| `manualPublishWorkflow` | `adminAction` | Force-publish (or re-publish) one workflow |
+
+Internal:
+
+| Function | Type | Purpose |
+|---|---|---|
+| `publishWorkflow` | `internalAction` | Pipeline-side publish; records status on workflow |
+| `publishToZernio` | `internalAction` | Low-level POST `/posts` (use `publishWorkflow` instead) |
+| `_readZernioRow` | `internalQuery` | Reads the `siteSettings` row with `key="zernio"` |
+| `_seedZernioConfig` | `internalMutation` | CLI/migration seeder |
 
 ## Future improvements
 
 - [ ] Zernio TypeScript SDK (watch https://github.com/zernio-dev for releases)
-- [ ] Auto-schedule posts on calendar from contentCalendar table
-- [ ] Per-workflow Zernio profile selection in the admin UI
-- [ ] Webhook handling for Zernio post status updates (published, failed, etc.)
+- [ ] Auto-schedule posts on calendar from `contentCalendar` table
+- [ ] Per-workflow profile selection in the admin UI (currently global per format)
+- [ ] Webhook handling for Zernio post status updates (published, failed, etc.) — they would close the loop on `socialPublish.status` rather than relying on the synchronous response
+- [ ] Per-platform character/length validation before send

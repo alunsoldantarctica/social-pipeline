@@ -10,9 +10,12 @@ export const adminTables = {
     model: v.string(),
     description: v.optional(v.string()),
     isActive: v.boolean(),
+    // Forward-compat for multi-tenant. Undefined = default workspace.
+    workspaceId: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
-  }).index("by_key", ["key"]),
+  }).index("by_key", ["key"])
+    .index("by_workspace_key", ["workspaceId", "key"]),
 
   availableModels: defineTable({
     provider: v.string(),
@@ -37,6 +40,28 @@ export const adminTables = {
   siteSettings: defineTable({
     key: v.string(),
     contactEmail: v.optional(v.string()),
+    // Default Cloudflare Images ID used as the placeholder hero on freshly-created
+    // blog posts (key="media"). Editors swap this on the post itself before publish.
+    defaultBlogHeroImageId: v.optional(v.string()),
+    // Zernio social-publishing config (key="zernio")
+    zernioAutoPublish: v.optional(v.boolean()),
+    zernioProfilesByFormat: v.optional(v.object({
+      blog_post: v.optional(v.array(v.string())),
+      twitter_thread: v.optional(v.array(v.string())),
+      linkedin_article: v.optional(v.array(v.string())),
+      newsletter_issue: v.optional(v.array(v.string())),
+    })),
+    // Resend newsletter config (key="resend")
+    resendAutoSend: v.optional(v.boolean()),
+    resendAudienceId: v.optional(v.string()),
+    resendFromAddress: v.optional(v.string()),
+    resendReplyTo: v.optional(v.string()),
+    // Niche profile (key="niche") — input the operator gives the generator
+    nicheWebsiteUrl: v.optional(v.string()),
+    nicheDescription: v.optional(v.string()),
+    nicheAudience: v.optional(v.string()),
+    nicheLastGeneratedAt: v.optional(v.number()),
+    nicheLastSourceModel: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
@@ -54,9 +79,37 @@ export const adminTables = {
     body: v.string(),
     isActive: v.boolean(),
     order: v.number(),
+    workspaceId: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
-  }).index("by_active_order", ["isActive", "order"]),
+  }).index("by_active_order", ["isActive", "order"])
+    .index("by_workspace_active", ["workspaceId", "isActive", "order"]),
+
+  // ===== AGENT INSTRUCTIONS (DB-driven prompts) =====
+  // One row per (stage, format) pair. `format` is undefined for the base
+  // stage prompt (research/outline/draft) and set for draft format
+  // adapters (twitter_thread/linkedin_article/newsletter_issue).
+  // `useDefault=true` makes the runtime resolver fall back to the constants
+  // in convex/agents/instructions.ts and convex/agents/formatAdapters.ts.
+
+  agentInstructions: defineTable({
+    stage: v.union(
+      v.literal("research"),
+      v.literal("outline"),
+      v.literal("draft"),
+    ),
+    format: v.optional(v.union(
+      v.literal("twitter_thread"),
+      v.literal("linkedin_article"),
+      v.literal("newsletter_issue"),
+    )),
+    body: v.string(),
+    useDefault: v.boolean(),
+    workspaceId: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_stage_format", ["stage", "format"])
+    .index("by_workspace_stage_format", ["workspaceId", "stage", "format"]),
 
   // ===== CONTENT PODS (pillar strategy) =====
 
@@ -66,10 +119,12 @@ export const adminTables = {
     description: v.optional(v.string()),
     pillarKeyword: v.string(),
     isActive: v.boolean(),
+    workspaceId: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_slug", ["slug"])
-    .index("by_active", ["isActive"]),
+    .index("by_active", ["isActive"])
+    .index("by_workspace_active", ["workspaceId", "isActive"]),
 
   // ===== CONTENT BRIEFS (competitor gap → topic) =====
 
@@ -88,10 +143,12 @@ export const adminTables = {
     ),
     workflowId: v.optional(v.id("articleWorkflows")),
     isCompleted: v.optional(v.boolean()),
+    workspaceId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_status", ["status"])
-    .index("by_pod", ["podId", "status"]),
+    .index("by_pod", ["podId", "status"])
+    .index("by_workspace_status", ["workspaceId", "status"]),
 
   // ===== COMPETITOR INTELLIGENCE =====
 

@@ -4,9 +4,13 @@ import sitemap from '@astrojs/sitemap';
 import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
 
-// TODO: Update site URL to your production domain
+// Set SITE_URL in your environment (.env.local for dev, wrangler.toml [vars]
+// for production) to your production domain. Falls back to a placeholder so
+// `astro build` does not fail when the variable isn't set yet.
+const siteUrl = process.env.SITE_URL ?? 'https://your-domain.com';
+
 export default defineConfig({
-  site: 'https://your-domain.com',
+  site: siteUrl,
   output: 'static',
   trailingSlash: 'never',
   build: {

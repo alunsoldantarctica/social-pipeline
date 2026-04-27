@@ -5,16 +5,19 @@
  * The base draftInstructions handle "blog_post". Every other format gets
  * an additional instruction block appended before the agent runs.
  *
+ * Each constant below is the *default* block for that format. The runtime
+ * resolver (convex/agents/instructionsResolver.ts) reads the DB-stored
+ * version first and falls back to these constants when no override exists.
+ *
  * To add a new output format:
  * 1. Add a literal to the outputFormat union in convex/schema/content.ts
- * 2. Add a case here returning the format-specific instructions
- * 3. Wire to Zernio or your publish adapter in convex/admin/zernioPublish.ts
+ * 2. Add a new exported constant + case in `draftInstructionsForFormat`
+ * 3. Add the format literal to convex/schema/admin.ts:agentInstructions.format
+ *    and to the resolver's union (instructionsResolver.ts)
+ * 4. Wire to Zernio or your publish adapter in convex/admin/zernioPublish.ts
  */
 
-export function draftInstructionsForFormat(format: string | undefined): string {
-  switch (format) {
-    case "twitter_thread":
-      return `
+export const TWITTER_THREAD_INSTRUCTIONS = `
 ## Output Format Override: Twitter/X Thread
 
 You are writing a Twitter/X thread, NOT a blog post. Override the JSON output format:
@@ -36,8 +39,7 @@ Rules for threads:
 - Write conversationally; avoid corporate language
 `;
 
-    case "linkedin_article":
-      return `
+export const LINKEDIN_ARTICLE_INSTRUCTIONS = `
 ## Output Format Override: LinkedIn Article
 
 You are writing a LinkedIn article, NOT a blog post. Adjust your JSON output:
@@ -59,8 +61,7 @@ Rules for LinkedIn articles:
 - No H1; use H2/H3 sparingly
 `;
 
-    case "newsletter_issue":
-      return `
+export const NEWSLETTER_ISSUE_INSTRUCTIONS = `
 ## Output Format Override: Newsletter Issue
 
 You are writing a newsletter issue. Adjust your JSON output:
@@ -97,7 +98,21 @@ Rules:
 - Plain markdown only — no complex tables
 `;
 
-    default: // blog_post
-      return ""; // base draftInstructions handle blog_post
+export type DraftFormat =
+  | "blog_post"
+  | "twitter_thread"
+  | "linkedin_article"
+  | "newsletter_issue";
+
+export function draftInstructionsForFormat(format: string | undefined): string {
+  switch (format) {
+    case "twitter_thread":
+      return TWITTER_THREAD_INSTRUCTIONS;
+    case "linkedin_article":
+      return LINKEDIN_ARTICLE_INSTRUCTIONS;
+    case "newsletter_issue":
+      return NEWSLETTER_ISSUE_INSTRUCTIONS;
+    default: // blog_post — base draftInstructions handle this format
+      return "";
   }
 }
