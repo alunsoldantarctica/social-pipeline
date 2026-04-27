@@ -16,6 +16,7 @@
 
 import { v } from "convex/values";
 import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 import {
   internalAction,
   internalMutation,
@@ -152,7 +153,17 @@ export const sendNewsletterWorkflow = internalAction({
       throw new Error("Newsletter draft has no usable subject — check the SUBJECT section");
     }
 
-    const html = await marked.parse(parts.bodyMarkdown);
+    const rawHtml = await marked.parse(parts.bodyMarkdown);
+    const html = sanitizeHtml(rawHtml, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img", "h1", "h2"]),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        img: ["src", "alt", "width", "height"],
+        a: ["href", "title", "target", "rel"],
+        "*": ["style"],
+      },
+      allowedSchemes: ["https", "mailto"],
+    });
     const now = Date.now();
 
     await ctx.runMutation(internal.admin.contentPipeline.setSocialPublishStatus, {

@@ -316,6 +316,15 @@ export const generatePrompts = adminAction({
     // 2. Optional Firecrawl scrape for site context.
     let websiteSummary: string | undefined;
     if (websiteUrl && websiteUrl.trim().length > 0) {
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(websiteUrl);
+      } catch {
+        throw new Error("Invalid website URL format");
+      }
+      if (parsedUrl.protocol !== "https:") {
+        throw new Error("Only https:// URLs are supported for website scraping");
+      }
       try {
         const scraped: any = await ctx.runAction(
           internal.admin.genericScraper.scrapeWithSchema,
