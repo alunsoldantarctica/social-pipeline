@@ -1,28 +1,50 @@
 # social-pipeline
 
-An open-source AI content pipeline scaffold. Research → Outline → Draft → Publish with per-stage model selection, cost tracking, editorial rules, competitor intelligence, and push notifications.
+An open-source AI content pipeline scaffold. Research → Outline → Draft → Publish with per-stage model selection, cost tracking, editable prompts and editorial rules, competitor intelligence, multi-platform publishing.
 
 Built with **Astro 6 + Convex + Cloudflare Workers + OpenRouter via Cloudflare AI Gateway**.
 
-> **Status**: Private scaffold. Extracted from a production deployment. Not yet production-hardened for multi-tenant use.
+> **Status**: Open scaffold. Extracted from a production deployment. Single-tenant by default; the schema has forward-compatible `workspaceId` columns so multi-tenant work won't be a destructive migration. See [`docs/multi-tenant.md`](docs/multi-tenant.md).
 
 ---
 
 ## What's included
 
-- **5-stage pipeline**: research_in_progress → research_review → outline_in_progress → outline_review → draft_in_progress → draft_review → completed
-- **Per-stage model overrides**: swap any stage to any OpenRouter/Google/Workers AI model per workflow
-- **Cost tracking**: estimated vs actual token cost at every step; AI Gateway spend limits enforced
-- **Editorial rules**: database-driven editorial constraints injected into every agent prompt — edit without a deploy
-- **Content pods**: pillar strategy — group articles into topic clusters
-- **Competitor intelligence**: scrape competitor URLs → tag content → generate briefs → send to pipeline
-- **Format adapters**: blog_post / twitter_thread / linkedin_article / newsletter_issue (architecture ready; draft instructions per format)
-- **Push notifications**: web push when drafts hit review stage
-- **Action log**: audit trail of every pipeline state change
-- **Cloudflare Images**: direct-upload media picker (no third-party dependency)
-- **Blog**: public blog pages with scheduled publishing and i18n overlay
-- **Markdown editor**: in-browser draft editing with preview
-- **Zernio integration**: drop in your API key + profile IDs and approved drafts auto-publish to 15+ social platforms; manual retry available
+**Pipeline core**
+- 5-stage workflow: `research_in_progress → research_review → outline_in_progress → outline_review → draft_in_progress → draft_review → completed` (with reject paths and revision loops, max 3 per stage)
+- Per-stage model overrides; per-workflow model overrides on top of that
+- Persistent agent threads — feedback compounds across revisions
+- Cost tracking: estimated (pre-run) and actual (post-run, from token logs) reconciled in the analytics dashboard
+- Cloudflare AI Gateway is the single audited LLM chokepoint (spend caps, unified logging)
+
+**Configuration without deploys** — see [`docs/prompts.md`](docs/prompts.md), [`docs/niche-setup.md`](docs/niche-setup.md)
+- **Niche generator** (`/admin/content?tab=setup`): describe your niche + audience, optionally drop in your website URL, get six tailored agent prompts in one click. Lock-aware: custom edits aren't clobbered.
+- **DB-driven agent prompts** (`/admin/content?tab=prompts`): research / outline / draft + 3 format adapters editable inline; resolver falls back to the bundled defaults until you customize.
+- **Editorial rules** (`/admin/content?tab=rules`): per-category constraints injected into every agent prompt at runtime.
+
+**Output formats** — see [`docs/format-adapters.md`](docs/format-adapters.md)
+- `blog_post` (default), `twitter_thread`, `linkedin_article`, `newsletter_issue`. Each is a draft-stage instruction block that's appended to the base draft prompt.
+
+**Multi-platform publishing** — see [`docs/social-publishing.md`](docs/social-publishing.md)
+- **Zernio** for X / LinkedIn / Threads / IG / 11 more — drop in API key + profile IDs.
+- **Resend** for newsletter broadcasts — reuses the same Resend key already wired for OTP auth.
+- Auto-publish gated by config; failures land on `articleWorkflows.socialPublish` and can be retried.
+
+**Competitor intelligence**
+- Scrape competitor URLs → LLM-tag content → cluster matrix and gap analysis → generate briefs that feed the pipeline.
+
+**Operations**
+- Convex Auth: Google OAuth + email OTP via Resend (8-digit, 15-min expiry).
+- Web push notifications when a draft hits review.
+- Action log: audit trail of every pipeline state change.
+- Public blog: scheduled publishing, edge cache, i18n translation overlay, in-browser markdown editor.
+- Cloudflare Images media picker.
+
+**Quality scaffolding** — see [`docs/development.md`](docs/development.md)
+- Biome lint + format.
+- Vitest unit tests + convex-test integration tests.
+- GitHub Actions CI: install → codegen → lint → typecheck → test → build.
+- SessionStart hook for Claude Code on the web sessions.
 
 ---
 
@@ -30,12 +52,12 @@ Built with **Astro 6 + Convex + Cloudflare Workers + OpenRouter via Cloudflare A
 
 | Service | Purpose | Free tier |
 |---|---|---|
-| [Cloudflare account](https://cloudflare.com) | Workers, KV (sessions), Images (media picker) | Yes |
-| [Convex account](https://convex.dev) | Backend DB + serverless functions | Yes (generous) |
-| [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/) | Routes all LLM calls, enforces spend limits | Yes |
-| [OpenRouter](https://openrouter.ai) | Access to 200+ models (Perplexity Sonar for research) | Pay-per-use |
-| [Firecrawl](https://firecrawl.dev) | Web research agent tool | Free tier (500 pages/mo) |
-| Auth | Convex Auth (email OTP built-in) — no extra service | Built-in |
+| [Cloudflare](https://cloudflare.com) | Workers (host), KV (sessions), Images (media), AI Gateway (LLM router) | Yes |
+| [Convex](https://convex.dev) | DB + serverless functions + workflows + agents + auth | Yes (generous) |
+| [OpenRouter](https://openrouter.ai) | LLM provider (200+ models incl. Perplexity Sonar for research) | Pay-per-use |
+| [Firecrawl](https://firecrawl.dev) | Research agent + competitor scraping + niche-generator site extract | 500 pages/mo free |
+| [Resend](https://resend.com) | Email OTP (auth) + newsletter broadcasts (publishing) | Yes |
+| [Zernio](https://zernio.com) | Optional — social publishing aggregator | 20 posts/mo free |
 
 ---
 
@@ -52,88 +74,84 @@ pnpx convex dev
 # 2. Copy env template and fill in your keys
 cp .env.example .env.local
 
-# 3. Start the dev server (in a second terminal)
+# 3. Run migrations to seed editorial rules, model catalog, cost assumptions
+pnpx convex run migrations/runner:runPending '{}'
+
+# 4. Start the dev server (in a second terminal)
 pnpm dev
 
-# 4. Open the admin panel
-open http://localhost:4321/admin
+# 5. Open the admin panel
+open http://localhost:4321/admin/content?tab=setup
 ```
 
-See [`docs/setup.md`](docs/setup.md) for full setup instructions.
+The first stop is the **Setup** tab — describe your niche, hit Generate, review the six tailored prompts, click Apply. Then create your first workflow on the Pipeline tab.
+
+See [`docs/setup.md`](docs/setup.md) for full bring-up instructions including secrets, KV namespace, and Cloudflare Images.
 
 ---
 
-## Architecture
+## Architecture (high level)
 
 ```
 Browser (Astro + React islands)
     │
-    ├── /admin/*        → Admin panel (React, client:load)
-    │     ├── /content  → Pipeline + blog management
-    │     ├── /analytics → AI cost dashboard
-    │     └── /action-log → Audit trail
-    │
-    └── /blog/*         → Public blog (static, edge-cached)
+    ├── /                  → Public landing page
+    ├── /admin/content     → Setup, Blog, Pods, Pipeline, Models, Prompts, Rules, FAQ
+    ├── /admin/analytics   → Cost dashboard (estimated vs actual)
+    ├── /admin/action-log  → Audit trail
+    └── /blog/*            → Public blog (static, edge-cached, i18n overlay)
 
 Convex (backend)
+    ├── workflows/contentPipeline.ts  → Durable 3-agent loop with revision handling
     ├── agents/
-    │     ├── runner.ts      → Research / Outline / Draft actions
-    │     ├── instructions.ts → System prompts (TODO: customize for niche)
-    │     ├── editorialContext.ts → Injects rules + live data into every prompt
-    │     └── formatAdapters.ts  → Per-format draft instructions
-    │
+    │     ├── runner.ts                → Research / Outline / Draft internal actions
+    │     ├── instructionsResolver.ts  → DB-vs-fallback prompt lookup
+    │     ├── editorialContext.ts      → Injects rules into every agent prompt
+    │     ├── formatAdapters.ts        → Per-format draft instruction constants
+    │     └── parseNewsletterDraft.ts  → newsletter_issue → {subject, preview, body}
     ├── admin/
-    │     ├── contentPipeline.ts → Pipeline mutations + queries
-    │     ├── competitorIntel.ts → Competitor scrape + tagging
-    │     ├── media.ts           → Cloudflare Images API
-    │     └── zernioPublish.ts   → Social publishing stub
-    │
-    └── catalog/ → Model cost tracking (estimated vs actual)
+    │     ├── nicheGenerator.ts        → Niche profile → six tailored prompts
+    │     ├── agentInstructions.ts     → CRUD for prompt overrides
+    │     ├── editorialRules.ts        → CRUD for editorial rules
+    │     ├── contentPipeline.ts       → Workflow CRUD + approvals + cost
+    │     ├── competitorIntel.ts       → Scrape → tag → brief
+    │     ├── zernioPublish.ts         → Social publishing
+    │     ├── resendNewsletter.ts      → Newsletter broadcasts
+    │     └── media.ts                 → Cloudflare Images
+    ├── catalog/  → Model registry + cost tracking
+    └── lib/aiGateway.ts → All LLM calls funnel through here
 
 Cloudflare Workers (edge)
-    └── AI Gateway → all LLM calls routed here for spend limits + logging
+    └── AI Gateway → spend caps + logging
 ```
 
----
-
-## Customizing for your niche
-
-1. **Instructions** — Edit `convex/agents/instructions.ts`. Replace the generic research/outline/draft prompts with your domain context. The `TODO: customize for your niche` comments mark the key spots.
-
-2. **Editorial rules** — Go to `/admin/content?tab=rules`. Add/edit rules without touching code. These inject into every agent prompt at runtime.
-
-3. **Blog categories** — Edit the `category` field in `convex/schema/content.ts`. Change the string union to match your taxonomy.
-
-4. **Format adapters** — Edit `convex/agents/formatAdapters.ts`. Each format gets its own instruction block. See [`docs/format-adapters.md`](docs/format-adapters.md).
+See [`docs/architecture.md`](docs/architecture.md) for the detailed flow.
 
 ---
 
-## Social publishing (Zernio)
+## Documentation index
 
-See [`docs/social-publishing.md`](docs/social-publishing.md) for full setup.
-
-Zernio (formerly Late/getlate.dev) publishes to 15+ platforms via a single REST API call. The pipeline is already wired:
-
-1. Set `ZERNIO_API_KEY` in your Convex environment
-2. Run `admin/zernioPublish:listZernioProfiles` to discover profile IDs
-3. Save profile-to-format mappings via `admin/zernioPublish:updateZernioConfig` with `autoPublish: true`
-4. Approved non-blog drafts publish automatically; failures land on `articleWorkflows.socialPublish` and can be retried with `manualPublishWorkflow`
-
----
-
-## Framework alternatives (Next.js)
-
-See [`docs/next-js-migration.md`](docs/next-js-migration.md) for the adapter swap guide. The Convex client wiring is framework-agnostic.
+- [`docs/setup.md`](docs/setup.md) — bring-up checklist
+- [`docs/architecture.md`](docs/architecture.md) — pipeline state machine, agent runner, config layers
+- [`docs/niche-setup.md`](docs/niche-setup.md) — using the niche generator
+- [`docs/prompts.md`](docs/prompts.md) — DB-driven agent prompts
+- [`docs/format-adapters.md`](docs/format-adapters.md) — adding output formats
+- [`docs/social-publishing.md`](docs/social-publishing.md) — Zernio + Resend
+- [`docs/multi-tenant.md`](docs/multi-tenant.md) — workspaceId columns + roadmap
+- [`docs/development.md`](docs/development.md) — lint, tests, CI, SessionStart hook
+- [`docs/next-js-migration.md`](docs/next-js-migration.md) — Astro → Next.js adapter swap
 
 ---
 
 ## Deployment
 
 ```bash
-# Deploy to Cloudflare Workers (auto-deploys on GitHub push if CI is set up)
 pnpm build
 wrangler deploy
+pnpx convex deploy
 ```
+
+Or rely on the `.github/workflows/ci.yml` GitHub Action for typecheck/lint/test on PRs (deploy steps are deliberately not wired — add them when you're ready).
 
 ---
 
