@@ -1,0 +1,10 @@
+---
+import MainLayout from '../../layouts/MainLayout.astro';
+import { AcceptInvite } from '../../components/react/admin/AcceptInvite';
+
+const token = Astro.url.searchParams.get('token') ?? '';
+---
+
+<MainLayout title="Accept invitation">
+  <AcceptInvite token={token} client:load />
+</MainLayout>

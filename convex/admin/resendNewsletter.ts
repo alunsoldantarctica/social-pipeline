@@ -23,7 +23,11 @@ import {
   internalQuery,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { adminAction, adminMutation, adminQuery } from "../lib/adminAuth";
+import {
+  workspaceAdminAction,
+  workspaceAdminMutation,
+  workspaceAdminQuery,
+} from "../lib/adminAuth";
 import { parseNewsletterDraft } from "../agents/parseNewsletterDraft";
 import { type ResendConfig, readConfig } from "./resendConfig";
 
@@ -52,8 +56,17 @@ async function resendFetch(path: string, init: RequestInit = {}) {
 // ===== INTERNAL: settings reader =====
 
 export const _readResendRow = internalQuery({
-  args: {},
-  handler: async (ctx) => {
+  args: { workspaceId: v.optional(v.id("workspaces")) },
+  handler: async (ctx, { workspaceId }) => {
+    if (workspaceId) {
+      return await ctx.db
+        .query("siteSettings")
+        .withIndex("by_workspace_key", (q) =>
+          q.eq("workspaceId", workspaceId).eq("key", "resend"),
+        )
+        .first();
+    }
+    // Legacy fallback: global row without workspaceId
     return await ctx.db
       .query("siteSettings")
       .withIndex("by_key", (q) => q.eq("key", "resend"))
@@ -101,7 +114,7 @@ export const sendNewsletterWorkflow = internalAction({
 
     const settingsRow = await ctx.runQuery(
       internal.admin.resendNewsletter._readResendRow,
-      {},
+      { workspaceId: workflow.workspaceId as any },
     );
     const config = readConfig(settingsRow);
 
@@ -217,18 +230,20 @@ export const sendNewsletterWorkflow = internalAction({
 
 // ===== ADMIN: configuration =====
 
-export const getResendConfig = adminQuery({
+export const getResendConfig = workspaceAdminQuery({
   args: {},
   handler: async (ctx) => {
     const row = await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "resend"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", ctx.workspaceId).eq("key", "resend"),
+      )
       .first();
     return readConfig(row);
   },
 });
 
-export const updateResendConfig = adminMutation({
+export const updateResendConfig = workspaceAdminMutation({
   args: {
     autoSend: v.boolean(),
     audienceId: v.optional(v.string()),
@@ -238,10 +253,13 @@ export const updateResendConfig = adminMutation({
   handler: async (ctx, { autoSend, audienceId, fromAddress, replyTo }) => {
     const existing = await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "resend"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", ctx.workspaceId).eq("key", "resend"),
+      )
       .first();
     const patch = {
       key: "resend",
+      workspaceId: ctx.workspaceId,
       resendAutoSend: autoSend,
       resendAudienceId: audienceId,
       resendFromAddress: fromAddress,
@@ -261,7 +279,7 @@ export const updateResendConfig = adminMutation({
 /**
  * List Resend audiences. Use the IDs in `updateResendConfig`.
  */
-export const listResendAudiences = adminAction({
+export const listResendAudiences = workspaceAdminAction({
   args: {},
   handler: async () => {
     return await resendFetch("/audiences");
@@ -271,7 +289,7 @@ export const listResendAudiences = adminAction({
 /**
  * Verify Resend credentials. UI helper — returns audiences on success.
  */
-export const testResendConnection = adminAction({
+export const testResendConnection = workspaceAdminAction({
   args: {},
   handler: async () => {
     try {
@@ -290,7 +308,7 @@ export const testResendConnection = adminAction({
  * Manually send a newsletter workflow to Resend. Useful for retries or for
  * sending older workflows once Resend is configured.
  */
-export const manualSendNewsletter = adminAction({
+export const manualSendNewsletter = workspaceAdminAction({
   args: {
     id: v.id("articleWorkflows"),
     scheduledAt: v.optional(v.number()),
@@ -308,6 +326,7 @@ export const manualSendNewsletter = adminAction({
 
 export const _seedResendConfig = internalMutation({
   args: {
+    workspaceId: v.id("workspaces"),
     autoSend: v.boolean(),
     audienceId: v.optional(v.string()),
     fromAddress: v.optional(v.string()),
@@ -316,10 +335,13 @@ export const _seedResendConfig = internalMutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "resend"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("key", "resend"),
+      )
       .first();
     const patch = {
       key: "resend",
+      workspaceId: args.workspaceId,
       resendAutoSend: args.autoSend,
       resendAudienceId: args.audienceId,
       resendFromAddress: args.fromAddress,

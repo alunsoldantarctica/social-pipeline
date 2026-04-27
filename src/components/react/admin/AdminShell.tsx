@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ErrorInfo, type ReactNode } from 'react';
+import { useState, Component, type ErrorInfo, type ReactNode } from 'react';
 import {
   LayoutDashboard,
   Menu,
@@ -11,16 +11,21 @@ import {
   BookOpen,
   FileText,
   TrendingUp,
+  ChevronDown,
+  Building2,
+  Plus,
 } from 'lucide-react';
 import { useConvexAuth, useQuery } from 'convex/react';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../../../convex/_generated/api';
+import type { Id } from '../../../../convex/_generated/dataModel';
 import { cn } from '../../../lib/utils';
 import { ConvexClientProvider } from '../ConvexClientProvider';
 import { SignInButtons } from '../SignInButtons';
 import { NotificationBell } from './NotificationBell';
 import { OfflineBanner } from './OfflineBanner';
 import { PendingActionsBadge } from './PendingActionsBadge';
+import { WorkspaceProvider, useWorkspace } from './WorkspaceContext';
 
 /**
  * Error boundary that catches stale-auth Convex errors (e.g. after logout)
@@ -204,6 +209,62 @@ interface AdminShellProps {
   onBack?: () => void;
 }
 
+function WorkspaceSwitcher() {
+  const [open, setOpen] = useState(false);
+  const { workspace, allWorkspaces, switchWorkspace } = useWorkspace();
+
+  if (!workspace || !allWorkspaces || allWorkspaces.length <= 1) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400">
+        <Building2 className="w-4 h-4 text-teal-500 shrink-0" />
+        <span className="truncate font-medium text-white">{workspace?.name ?? '—'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-slate-800 transition-colors"
+      >
+        <Building2 className="w-4 h-4 text-teal-500 shrink-0" />
+        <span className="flex-1 truncate text-left font-medium text-white">{workspace.name}</span>
+        <ChevronDown className={cn('w-4 h-4 text-slate-400 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg overflow-hidden shadow-xl z-10">
+          {allWorkspaces.map((ws) => (
+            <button
+              key={ws._id}
+              onClick={async () => {
+                await switchWorkspace(ws._id as Id<'workspaces'>);
+                setOpen(false);
+              }}
+              className={cn(
+                'w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left',
+                ws._id === workspace._id
+                  ? 'bg-teal-600/20 text-teal-400'
+                  : 'text-slate-300 hover:bg-slate-700',
+              )}
+            >
+              <Building2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{ws.name}</span>
+            </button>
+          ))}
+          <a
+            href="/admin/onboarding"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:bg-slate-700 transition-colors border-t border-slate-700"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New workspace</span>
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminShellInner({
   children,
   title,
@@ -218,10 +279,11 @@ function AdminShellInner({
   const { signOut } = useAuthActions();
   const currentUser = useQuery(api.users.getCurrentUser);
   const isAdmin = useQuery(api.users.checkIsAdmin);
+  const { workspace, isLoading: wsLoading } = useWorkspace();
   const badgeCounts: Record<string, number> = {};
 
-  // Loading state - keep spinner while auth initializes, user doc loads, or admin check resolves
-  if (isLoading || (isAuthenticated && (currentUser === undefined || isAdmin === undefined))) {
+  // Loading state - keep spinner while auth initializes, user doc loads, admin check resolves, or workspace loads
+  if (isLoading || (isAuthenticated && (currentUser === undefined || isAdmin === undefined || wsLoading))) {
     return (
       <div className="h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
@@ -253,6 +315,18 @@ function AdminShellInner({
             onSuccess={() => window.location.reload()}
           />
         </div>
+      </div>
+    );
+  }
+
+  // No workspace → redirect to onboarding (client-side)
+  if (isAdmin && !workspace && currentPath !== '/admin/onboarding') {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/admin/onboarding';
+    }
+    return (
+      <div className="h-screen bg-slate-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-teal-500 animate-spin" />
       </div>
     );
   }
@@ -317,6 +391,11 @@ function AdminShellInner({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Workspace switcher */}
+        <div className="shrink-0 px-2 py-2 border-b border-slate-800">
+          <WorkspaceSwitcher />
         </div>
 
         {/* Navigation (scrollable) */}
@@ -438,7 +517,9 @@ export function AdminShell(props: AdminShellProps) {
     <AdminErrorBoundary>
       <ConvexClientProvider>
         <AdminAuthErrorBoundary>
-          <AdminShellInner {...props} />
+          <WorkspaceProvider>
+            <AdminShellInner {...props} />
+          </WorkspaceProvider>
         </AdminAuthErrorBoundary>
       </ConvexClientProvider>
     </AdminErrorBoundary>

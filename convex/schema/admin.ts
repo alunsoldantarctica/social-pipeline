@@ -2,6 +2,32 @@ import { defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export const adminTables = {
+  // ===== WORKSPACES =====
+
+  workspaces: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    ownerId: v.id("users"),
+    tier: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_slug", ["slug"])
+    .index("by_owner", ["ownerId"]),
+
+  workspaceMembers: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.optional(v.id("users")),
+    role: v.string(),
+    inviteEmail: v.optional(v.string()),
+    inviteToken: v.optional(v.string()),
+    inviteExpiresAt: v.optional(v.number()),
+    status: v.string(),
+    invitedBy: v.optional(v.id("users")),
+    joinedAt: v.optional(v.number()),
+  }).index("by_workspace", ["workspaceId", "status"])
+    .index("by_user", ["userId", "status"])
+    .index("by_invite_token", ["inviteToken"]),
+
   // ===== AGENT CONFIG =====
 
   agentConfigs: defineTable({
@@ -39,6 +65,7 @@ export const adminTables = {
 
   siteSettings: defineTable({
     key: v.string(),
+    workspaceId: v.optional(v.id("workspaces")),
     contactEmail: v.optional(v.string()),
     // Default Cloudflare Images ID used as the placeholder hero on freshly-created
     // blog posts (key="media"). Editors swap this on the post itself before publish.
@@ -64,7 +91,8 @@ export const adminTables = {
     nicheLastSourceModel: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
-  }).index("by_key", ["key"]),
+  }).index("by_key", ["key"])
+    .index("by_workspace_key", ["workspaceId", "key"]),
 
   // ===== EDITORIAL RULES =====
 

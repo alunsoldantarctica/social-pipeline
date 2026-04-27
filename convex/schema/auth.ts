@@ -10,6 +10,8 @@ export const authDomainTables = {
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
+    // Active workspace for session-based multi-tenancy
+    activeWorkspaceId: v.optional(v.id("workspaces")),
   }).index("email", ["email"])
     .index("phone", ["phone"]),
 

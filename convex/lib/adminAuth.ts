@@ -212,6 +212,25 @@ export const adminMutation = customMutation(mutation, {
 // ===== Internal queries for adminAction (actions lack ctx.db) =====
 
 /**
+ * Resolve the active workspaceId for a user and verify membership.
+ * Used by workspaceAdminAction wrapper (actions lack ctx.db).
+ */
+export const _resolveCallerWorkspace = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }): Promise<Id<"workspaces"> | null> => {
+    const user = await ctx.db.get(userId);
+    const workspaceId = user?.activeWorkspaceId;
+    if (!workspaceId) return null;
+    const member = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId).eq("status", "active"))
+      .filter((q) => q.eq(q.field("workspaceId"), workspaceId))
+      .first();
+    return member ? workspaceId : null;
+  },
+});
+
+/**
  * Check if a user has admin role. Used by adminAction wrapper.
  */
 export const _checkAdminRole = internalQuery({
@@ -252,6 +271,63 @@ export const _resolveApiServiceUser = internalQuery({
   },
 });
 
+// ===== Workspace-scoped wrappers =====
+// These read the caller's activeWorkspaceId and inject it as workspaceId.
+// Use workspaceAdminQuery/Mutation/Action for workspace-aware endpoints.
+
+async function resolveWorkspaceId(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+): Promise<Id<"workspaces">> {
+  const user = await ctx.db.get(userId);
+  const workspaceId = user?.activeWorkspaceId;
+  if (!workspaceId) {
+    throw new ConvexError("No active workspace — complete onboarding first");
+  }
+  const member = await ctx.db
+    .query("workspaceMembers")
+    .withIndex("by_user", (q) => q.eq("userId", userId).eq("status", "active"))
+    .filter((q) => q.eq(q.field("workspaceId"), workspaceId))
+    .first();
+  if (!member) {
+    throw new ConvexError("Not a member of the active workspace");
+  }
+  return workspaceId;
+}
+
+export const workspaceAdminQuery = customQuery(query, {
+  args: { _apiToken: v.optional(v.string()) },
+  input: async (ctx, { _apiToken }) => {
+    const sessionUserId = await getAuthUserId(ctx);
+    if (sessionUserId) {
+      const workspaceId = await resolveWorkspaceId(ctx, sessionUserId);
+      return { ctx: { userId: sessionUserId, workspaceId }, args: {} };
+    }
+    const tokenUserId = await tryApiTokenAuth(ctx, _apiToken);
+    if (tokenUserId) {
+      // API token callers must pass workspaceId explicitly via args — skip workspace check
+      return { ctx: { userId: tokenUserId, workspaceId: null as unknown as Id<"workspaces"> }, args: {} };
+    }
+    throw new ConvexError("Authentication required");
+  },
+});
+
+export const workspaceAdminMutation = customMutation(mutation, {
+  args: { _apiToken: v.optional(v.string()) },
+  input: async (ctx, { _apiToken }) => {
+    const sessionUserId = await getAuthUserId(ctx);
+    if (sessionUserId) {
+      const workspaceId = await resolveWorkspaceId(ctx, sessionUserId);
+      return { ctx: { userId: sessionUserId, workspaceId }, args: {} };
+    }
+    const tokenUserId = await tryApiTokenAuth(ctx, _apiToken);
+    if (tokenUserId) {
+      return { ctx: { userId: tokenUserId, workspaceId: null as unknown as Id<"workspaces"> }, args: {} };
+    }
+    throw new ConvexError("Authentication required");
+  },
+});
+
 /**
  * Custom action wrapper that requires admin authentication.
  * Use this instead of `action` for admin-only action endpoints.
@@ -285,6 +361,38 @@ export const adminAction: any = customAction(action, {
       );
       if (tokenUserId) {
         return { ctx: { userId: tokenUserId }, args: {} };
+      }
+    }
+
+    throw new ConvexError("Authentication required");
+  },
+});
+
+export const workspaceAdminAction: any = customAction(action, {
+  args: { _apiToken: v.optional(v.string()) },
+  input: async (ctx, { _apiToken }) => {
+    const sessionUserId = await getAuthUserId(ctx);
+    if (sessionUserId) {
+      const workspaceId = await ctx.runQuery(
+        internal.lib.adminAuth._resolveCallerWorkspace,
+        { userId: sessionUserId },
+      );
+      if (!workspaceId) {
+        throw new ConvexError("No active workspace — complete onboarding first");
+      }
+      return { ctx: { userId: sessionUserId, workspaceId }, args: {} };
+    }
+
+    if (_apiToken) {
+      const tokenUserId: string | null = await ctx.runQuery(
+        internal.lib.adminAuth._resolveApiServiceUser,
+        { apiToken: _apiToken },
+      );
+      if (tokenUserId) {
+        return {
+          ctx: { userId: tokenUserId, workspaceId: null as unknown as Id<"workspaces"> },
+          args: {},
+        };
       }
     }
 

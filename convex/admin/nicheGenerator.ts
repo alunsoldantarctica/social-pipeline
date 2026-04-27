@@ -22,7 +22,11 @@ import {
   internalQuery,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { adminAction, adminMutation, adminQuery } from "../lib/adminAuth";
+import {
+  workspaceAdminAction,
+  workspaceAdminMutation,
+  workspaceAdminQuery,
+} from "../lib/adminAuth";
 import { createModelFromConfig, type GatewayProvider } from "../agents/config";
 import { getDefaultInstruction } from "../agents/instructionsResolver";
 
@@ -129,14 +133,16 @@ Return JSON matching the requested schema. Each field is the full rewritten prom
 // ===== Internal queries / mutations =====
 
 /**
- * Read the niche profile row from siteSettings.
+ * Read the niche profile row from siteSettings for a workspace.
  */
 export const _readNicheRow = internalQuery({
-  args: {},
-  handler: async (ctx) => {
+  args: { workspaceId: v.id("workspaces") },
+  handler: async (ctx, { workspaceId }) => {
     return await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "niche"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", workspaceId).eq("key", "niche"),
+      )
       .first();
   },
 });
@@ -147,14 +153,15 @@ export const _readNicheRow = internalQuery({
  */
 export const _readSlot = internalQuery({
   args: {
+    workspaceId: v.id("workspaces"),
     stage: stageValidator,
     format: v.optional(formatValidator),
   },
-  handler: async (ctx, { stage, format }) => {
+  handler: async (ctx, { workspaceId, stage, format }) => {
     return await ctx.db
       .query("agentInstructions")
-      .withIndex("by_stage_format", (q) =>
-        q.eq("stage", stage).eq("format", format),
+      .withIndex("by_workspace_stage_format", (q) =>
+        q.eq("workspaceId", workspaceId).eq("stage", stage).eq("format", format),
       )
       .first();
   },
@@ -165,15 +172,19 @@ export const _readSlot = internalQuery({
  */
 export const _stampNicheGenerated = internalMutation({
   args: {
+    workspaceId: v.id("workspaces"),
     model: v.string(),
   },
-  handler: async (ctx, { model }) => {
+  handler: async (ctx, { workspaceId, model }) => {
     const existing = await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "niche"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", workspaceId).eq("key", "niche"),
+      )
       .first();
     const patch = {
       key: "niche",
+      workspaceId,
       nicheLastGeneratedAt: Date.now(),
       nicheLastSourceModel: model,
       updatedAt: Date.now(),
@@ -193,16 +204,17 @@ export const _stampNicheGenerated = internalMutation({
  */
 export const _applyOneSlot = internalMutation({
   args: {
+    workspaceId: v.id("workspaces"),
     stage: stageValidator,
     format: v.optional(formatValidator),
     body: v.string(),
     force: v.boolean(),
   },
-  handler: async (ctx, { stage, format, body, force }): Promise<"written" | "skipped_locked"> => {
+  handler: async (ctx, { workspaceId, stage, format, body, force }): Promise<"written" | "skipped_locked"> => {
     const existing = await ctx.db
       .query("agentInstructions")
-      .withIndex("by_stage_format", (q) =>
-        q.eq("stage", stage).eq("format", format),
+      .withIndex("by_workspace_stage_format", (q) =>
+        q.eq("workspaceId", workspaceId).eq("stage", stage).eq("format", format),
       )
       .first();
 
@@ -224,6 +236,7 @@ export const _applyOneSlot = internalMutation({
       });
     } else {
       await ctx.db.insert("agentInstructions", {
+        workspaceId,
         stage,
         format,
         body,
@@ -241,12 +254,14 @@ export const _applyOneSlot = internalMutation({
 /**
  * Read the saved niche profile (does NOT include the bundled defaults).
  */
-export const getNicheConfig = adminQuery({
+export const getNicheConfig = workspaceAdminQuery({
   args: {},
   handler: async (ctx) => {
     const row = await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "niche"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", ctx.workspaceId).eq("key", "niche"),
+      )
       .first();
     if (!row) return null;
     return {
@@ -264,7 +279,7 @@ export const getNicheConfig = adminQuery({
  * Save the niche inputs (form data). Does NOT trigger generation; that's
  * a separate `generatePrompts` action so the operator can preview.
  */
-export const saveNicheConfig = adminMutation({
+export const saveNicheConfig = workspaceAdminMutation({
   args: {
     websiteUrl: v.optional(v.string()),
     description: v.string(),
@@ -273,10 +288,13 @@ export const saveNicheConfig = adminMutation({
   handler: async (ctx, { websiteUrl, description, audience }) => {
     const existing = await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "niche"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", ctx.workspaceId).eq("key", "niche"),
+      )
       .first();
     const patch = {
       key: "niche",
+      workspaceId: ctx.workspaceId,
       nicheWebsiteUrl: websiteUrl,
       nicheDescription: description,
       nicheAudience: audience,
@@ -299,7 +317,7 @@ export const saveNicheConfig = adminMutation({
  * returns the proposed six prompts as a preview. Does NOT write to
  * agentInstructions — that's `applyGeneratedPrompts`.
  */
-export const generatePrompts = adminAction({
+export const generatePrompts = workspaceAdminAction({
   args: {
     websiteUrl: v.optional(v.string()),
     description: v.string(),
@@ -308,6 +326,7 @@ export const generatePrompts = adminAction({
   handler: async (ctx, { websiteUrl, description, audience }) => {
     // 1. Persist inputs so the row exists for the stamp later.
     await ctx.runMutation(internal.admin.nicheGenerator._saveNicheInputsInternal, {
+      workspaceId: ctx.workspaceId,
       websiteUrl,
       description,
       audience,
@@ -394,6 +413,7 @@ export const generatePrompts = adminAction({
 
     // 4. Stamp the niche row with metadata.
     await ctx.runMutation(internal.admin.nicheGenerator._stampNicheGenerated, {
+      workspaceId: ctx.workspaceId,
       model: `${modelProvider}/${modelId}`,
     });
 
@@ -402,7 +422,7 @@ export const generatePrompts = adminAction({
       ALL_KEYS.map(async ({ stage, format, key }) => {
         const existing = await ctx.runQuery(
           internal.admin.nicheGenerator._readSlot,
-          { stage, format },
+          { workspaceId: ctx.workspaceId, stage, format },
         );
         const defaultBody = getDefaultInstruction(stage, format);
         const isLocked =
@@ -433,17 +453,21 @@ export const generatePrompts = adminAction({
 // Internal mutation used by generatePrompts to save inputs before running the LLM.
 export const _saveNicheInputsInternal = internalMutation({
   args: {
+    workspaceId: v.id("workspaces"),
     websiteUrl: v.optional(v.string()),
     description: v.string(),
     audience: v.string(),
   },
-  handler: async (ctx, { websiteUrl, description, audience }) => {
+  handler: async (ctx, { workspaceId, websiteUrl, description, audience }) => {
     const existing = await ctx.db
       .query("siteSettings")
-      .withIndex("by_key", (q) => q.eq("key", "niche"))
+      .withIndex("by_workspace_key", (q) =>
+        q.eq("workspaceId", workspaceId).eq("key", "niche"),
+      )
       .first();
     const patch = {
       key: "niche",
+      workspaceId,
       nicheWebsiteUrl: websiteUrl,
       nicheDescription: description,
       nicheAudience: audience,
@@ -461,7 +485,7 @@ export const _saveNicheInputsInternal = internalMutation({
  * Apply a previously-generated set of prompts to agentInstructions.
  * `force` overrides the lock check (custom-edited rows otherwise stay).
  */
-export const applyGeneratedPrompts = adminAction({
+export const applyGeneratedPrompts = workspaceAdminAction({
   args: {
     prompts: v.object({
       research: v.string(),
@@ -495,6 +519,7 @@ export const applyGeneratedPrompts = adminAction({
       const result = await ctx.runMutation(
         internal.admin.nicheGenerator._applyOneSlot,
         {
+          workspaceId: ctx.workspaceId,
           stage,
           format,
           body: prompts[key],
