@@ -16,6 +16,7 @@ import MainLayout from '../../layouts/MainLayout.astro';
 import Hero from '../../components/astro/Hero.astro';
 import Card from '../../components/astro/Card.astro';
 import Icon from '../../components/astro/Icon.astro';
+import SubscribeForm from '../../components/astro/SubscribeForm.astro';
 
 const locale = (Astro.currentLocale ?? 'en') as Locale;
 // Get slug from URL params
@@ -174,6 +175,8 @@ const renderedContent = localizedPost.content ? await marked.parse(localizedPost
           </div>
         </section>
       )}
+
+      <SubscribeForm />
 
       <div class="mt-12 text-center">
         <a href={localePath(locale, '/blog')} class="link-accent inline-flex items-center gap-2 hover:gap-3 transition-all">

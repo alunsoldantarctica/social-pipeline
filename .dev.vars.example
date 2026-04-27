@@ -1,0 +1,22 @@
+# Cloudflare Workers secrets for local development.
+# Copy this file to .dev.vars and fill in your values.
+# .dev.vars is gitignored — never commit it.
+#
+# Generate secrets and get service URLs using the setup wizard:
+# https://<your-github-username>.github.io/social-pipeline/setup/
+
+# GitHub OAuth (GitHub → Settings → Developer Settings → OAuth Apps)
+AUTH_GITHUB_ID=
+AUTH_GITHUB_SECRET=
+
+# Resend API key (https://resend.com — only needed for newsletter)
+AUTH_RESEND_KEY=
+
+# Admin API token — generate with: openssl rand -hex 32
+ADMIN_API_TOKEN=
+
+# Convex deploy key (Convex dashboard → Settings → Deploy Key)
+CONVEX_DEPLOY_KEY=
+
+# VAPID private key for web push (npx web-push generate-vapid-keys)
+VAPID_PRIVATE_KEY=

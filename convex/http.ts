@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { auth } from "./auth";
 import { timingSafeEqual } from "./lib/timingSafeEqual";
 
@@ -46,6 +46,71 @@ http.route({
     });
 
     return new Response("OK", { status: 200 });
+  }),
+});
+
+// Public newsletter subscribe endpoint — adds email to the configured Resend audience.
+// Returns 503 if Resend isn't configured, 400 on invalid input, 200 on success.
+http.route({
+  path: "/api/subscribe",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("Origin") ?? "*";
+    const corsHeaders = {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": origin,
+    };
+
+    let email: string;
+    try {
+      const body = await request.json();
+      email = (body?.email ?? "").trim().toLowerCase();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: corsHeaders });
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return new Response(JSON.stringify({ error: "Invalid email" }), { status: 400, headers: corsHeaders });
+    }
+
+    const audienceId = await ctx.runQuery(api.siteSettings.getNewsletterAudienceId, {});
+    if (!audienceId) {
+      return new Response(JSON.stringify({ error: "Newsletter not configured" }), { status: 503, headers: corsHeaders });
+    }
+
+    const apiKey = process.env.AUTH_RESEND_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "Newsletter not configured" }), { status: 503, headers: corsHeaders });
+    }
+
+    const res = await fetch(`https://api.resend.com/audiences/${audienceId}/contacts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!res.ok) {
+      console.error("Resend subscribe error", res.status, await res.text());
+      return new Response(JSON.stringify({ error: "Subscription failed" }), { status: 502, headers: corsHeaders });
+    }
+
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
+  }),
+});
+
+http.route({
+  path: "/api/subscribe",
+  method: "OPTIONS",
+  handler: httpAction(async (_ctx, request) => {
+    const origin = request.headers.get("Origin") ?? "*";
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
   }),
 });
 

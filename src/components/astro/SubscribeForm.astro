@@ -1,0 +1,76 @@
+---
+/**
+ * Newsletter subscribe form for the public blog.
+ * Only renders if a Resend audience ID is configured in siteSettings.
+ * Submits via fetch to the Convex HTTP endpoint POST /api/subscribe.
+ */
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../convex/_generated/api';
+
+const convexUrl = import.meta.env.PUBLIC_CONVEX_URL as string;
+const convex = new ConvexHttpClient(convexUrl);
+const audienceId = await convex.query(api.siteSettings.getNewsletterAudienceId, {});
+
+// Derive the Convex site URL (*.convex.site) from the deployment URL (*.convex.cloud)
+const convexSiteUrl = convexUrl?.replace('.convex.cloud', '.convex.site');
+---
+
+{audienceId && (
+  <div class="subscribe-form-container bg-surface-sunken rounded-xl p-6 my-8" id="subscribe">
+    <h3 class="text-lg font-semibold text-text-primary mb-1">Stay in the loop</h3>
+    <p class="text-sm text-text-secondary mb-4">Get new articles delivered to your inbox. No spam.</p>
+    <form id="subscribe-form" class="flex gap-2 flex-col sm:flex-row">
+      <input
+        type="email"
+        name="email"
+        placeholder="your@email.com"
+        required
+        class="flex-1 px-4 py-2 rounded-lg border border-border-base bg-surface-base text-text-primary placeholder:text-text-tertiary text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+      />
+      <button
+        type="submit"
+        class="px-5 py-2 rounded-lg bg-accent text-text-inverse font-medium text-sm hover:bg-accent/90 transition-colors whitespace-nowrap"
+      >
+        Subscribe
+      </button>
+    </form>
+    <p id="subscribe-message" class="text-sm mt-3 hidden"></p>
+  </div>
+
+  <script define:vars={{ convexSiteUrl }}>
+    const form = document.getElementById('subscribe-form');
+    const msg = document.getElementById('subscribe-message');
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = new FormData(form).get('email');
+      const btn = form.querySelector('button');
+      btn.disabled = true;
+      btn.textContent = 'Subscribing…';
+
+      try {
+        const res = await fetch(`${convexSiteUrl}/api/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        if (res.ok) {
+          form.innerHTML = '';
+          msg.textContent = "You're subscribed! Check your inbox for a confirmation.";
+          msg.className = 'text-sm mt-3 text-green-600';
+        } else {
+          msg.textContent = 'Something went wrong. Please try again.';
+          msg.className = 'text-sm mt-3 text-red-500';
+          btn.disabled = false;
+          btn.textContent = 'Subscribe';
+        }
+      } catch {
+        msg.textContent = 'Network error. Please try again.';
+        msg.className = 'text-sm mt-3 text-red-500';
+        btn.disabled = false;
+        btn.textContent = 'Subscribe';
+      }
+      msg.classList.remove('hidden');
+    });
+  </script>
+)}

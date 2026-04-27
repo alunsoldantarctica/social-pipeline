@@ -3,6 +3,21 @@ import { v } from "convex/values";
 import { requireAdmin } from "./lib/adminAuth";
 
 /**
+ * Returns the Resend audience ID if configured, or null.
+ * Used by the public subscribe endpoint and blog subscribe form.
+ */
+export const getNewsletterAudienceId = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("siteSettings")
+      .withIndex("by_key", (q) => q.eq("key", "resend"))
+      .first();
+    return (row as { resendAudienceId?: string } | null)?.resendAudienceId ?? null;
+  },
+});
+
+/**
  * Get contact settings (email, WhatsApp URL)
  */
 export const getContactSettings = query({

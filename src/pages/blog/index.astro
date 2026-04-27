@@ -8,6 +8,7 @@ import MainLayout from '../../layouts/MainLayout.astro';
 import Hero from '../../components/astro/Hero.astro';
 import Card from '../../components/astro/Card.astro';
 import Icon from '../../components/astro/Icon.astro';
+import SubscribeForm from '../../components/astro/SubscribeForm.astro';
 
 const locale = (Astro.currentLocale ?? 'en') as Locale;
 
@@ -72,6 +73,8 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-
           </div>
         </section>
       )}
+
+      <SubscribeForm />
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         {posts.map((post) => (
