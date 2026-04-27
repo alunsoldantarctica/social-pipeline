@@ -1,4 +1,4 @@
-import { FileText, Sparkles, HelpCircle, Layers, ShieldCheck, Cpu, Wand2 } from 'lucide-react';
+import { FileText, Sparkles, HelpCircle, Layers, ShieldCheck, Cpu, Wand2, Compass } from 'lucide-react';
 import { createTabbedAdminPage } from '../createAdminPage';
 import { BlogAdminContent } from '../BlogAdmin';
 import { ContentPipelineAdminContent } from '../ContentPipelineAdmin';
@@ -7,12 +7,14 @@ import { PodsAdminContent } from '../PodsAdmin';
 import { EditorialRulesAdminContent } from '../EditorialRulesAdmin';
 import { ModelCatalogAdminContent } from '../ModelCatalogAdmin';
 import { AgentInstructionsAdminContent } from '../AgentInstructionsAdmin';
+import { NicheSetupAdminContent } from '../NicheSetupAdmin';
 
 export default createTabbedAdminPage({
   title: 'Content',
-  subtitle: 'Blog posts, content pods, AI pipeline, models, prompts, rules & FAQ',
+  subtitle: 'Niche setup, blog, pods, pipeline, models, prompts, rules & FAQ',
   currentPath: '/admin/content',
   tabs: [
+    { value: 'setup', label: 'Setup', icon: <Compass className="w-4 h-4" />, component: NicheSetupAdminContent },
     { value: 'blog', label: 'Blog', icon: <FileText className="w-4 h-4" />, component: BlogAdminContent },
     { value: 'pods', label: 'Pods', icon: <Layers className="w-4 h-4" />, component: PodsAdminContent },
     { value: 'pipeline', label: 'Pipeline', icon: <Sparkles className="w-4 h-4" />, component: ContentPipelineAdminContent },

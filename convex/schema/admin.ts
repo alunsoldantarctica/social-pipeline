@@ -56,6 +56,12 @@ export const adminTables = {
     resendAudienceId: v.optional(v.string()),
     resendFromAddress: v.optional(v.string()),
     resendReplyTo: v.optional(v.string()),
+    // Niche profile (key="niche") — input the operator gives the generator
+    nicheWebsiteUrl: v.optional(v.string()),
+    nicheDescription: v.optional(v.string()),
+    nicheAudience: v.optional(v.string()),
+    nicheLastGeneratedAt: v.optional(v.number()),
+    nicheLastSourceModel: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
