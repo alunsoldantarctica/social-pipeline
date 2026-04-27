@@ -350,6 +350,37 @@ export const logAiUsage = internalMutation({
 });
 
 /**
+ * Record social publish status (Zernio) on a workflow.
+ * Called from convex/admin/zernioPublish.ts:publishWorkflow.
+ */
+export const setSocialPublishStatus = internalMutation({
+  args: {
+    id: v.id("articleWorkflows"),
+    socialPublish: v.object({
+      status: v.union(
+        v.literal("pending"),
+        v.literal("published"),
+        v.literal("failed"),
+        v.literal("skipped"),
+      ),
+      provider: v.literal("zernio"),
+      profileIds: v.optional(v.array(v.string())),
+      postIds: v.optional(v.array(v.string())),
+      scheduledAt: v.optional(v.number()),
+      publishedAt: v.optional(v.number()),
+      attemptedAt: v.optional(v.number()),
+      error: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, { id, socialPublish }) => {
+    await ctx.db.patch(id, {
+      socialPublish,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
  * Log feedback to history
  */
 export const logFeedback = internalMutation({
@@ -554,8 +585,14 @@ export const create = adminMutation({
     targetAudience: v.string(),
     podId: v.optional(v.id("contentPods")),
     fromBriefId: v.optional(v.id("contentBriefs")),
+    outputFormat: v.optional(v.union(
+      v.literal("blog_post"),
+      v.literal("twitter_thread"),
+      v.literal("linkedin_article"),
+      v.literal("newsletter_issue"),
+    )),
   },
-  handler: async (ctx, { topic, keywords, targetAudience, podId, fromBriefId }) => {
+  handler: async (ctx, { topic, keywords, targetAudience, podId, fromBriefId, outputFormat }) => {
     const now = Date.now();
     const costEstimate = await assertWorkflowBudget(ctx);
 
@@ -565,6 +602,7 @@ export const create = adminMutation({
       keywords,
       targetAudience,
       status: "research_in_progress",
+      outputFormat,
       feedbackHistory: [],
       revisionCount: {
         research: 0,

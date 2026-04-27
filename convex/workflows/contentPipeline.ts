@@ -417,6 +417,25 @@ export const contentPipelineWorkflow = workflowManager.define({
       status: "completed",
     });
 
+    // Auto-publish to Zernio when configured. Non-fatal — a failure here
+    // leaves the workflow "completed" with socialPublish.status="failed";
+    // the admin can retry via manualPublishWorkflow.
+    try {
+      const settings = await step.runQuery(
+        internal.admin.zernioPublish._readZernioRow,
+        {},
+      );
+      const autoPublish = (settings as { zernioAutoPublish?: boolean } | null)?.zernioAutoPublish ?? false;
+      if (autoPublish) {
+        await step.runAction(internal.admin.zernioPublish.publishWorkflow, {
+          workflowRecordId,
+          scheduledAt: scheduledPublishAt,
+        });
+      }
+    } catch (error) {
+      console.error("[content-pipeline] Zernio auto-publish failed:", error);
+    }
+
     return {
       status: "completed",
       blogPostId: blogPostId as any,

@@ -22,7 +22,7 @@ Built with **Astro 6 + Convex + Cloudflare Workers + OpenRouter via Cloudflare A
 - **Cloudflare Images**: direct-upload media picker (no third-party dependency)
 - **Blog**: public blog pages with scheduled publishing and i18n overlay
 - **Markdown editor**: in-browser draft editing with preview
-- **Zernio integration**: stub ready — wire your API key to publish to 15+ social platforms
+- **Zernio integration**: drop in your API key + profile IDs and approved drafts auto-publish to 15+ social platforms; manual retry available
 
 ---
 
@@ -110,9 +110,14 @@ Cloudflare Workers (edge)
 
 ## Social publishing (Zernio)
 
-See [`docs/social-publishing.md`](docs/social-publishing.md).
+See [`docs/social-publishing.md`](docs/social-publishing.md) for full setup.
 
-Zernio (formerly Late/getlate.dev) publishes to 15+ platforms via a single REST API call. The stub is in `convex/admin/zernioPublish.ts` — set `ZERNIO_API_KEY` and wire the `publishToZernio` action to the `draft_review → completed` transition in `convex/admin/contentPipeline.ts`.
+Zernio (formerly Late/getlate.dev) publishes to 15+ platforms via a single REST API call. The pipeline is already wired:
+
+1. Set `ZERNIO_API_KEY` in your Convex environment
+2. Run `admin/zernioPublish:listZernioProfiles` to discover profile IDs
+3. Save profile-to-format mappings via `admin/zernioPublish:updateZernioConfig` with `autoPublish: true`
+4. Approved non-blog drafts publish automatically; failures land on `articleWorkflows.socialPublish` and can be retried with `manualPublishWorkflow`
 
 ---
 

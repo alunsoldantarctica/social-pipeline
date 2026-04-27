@@ -37,6 +37,14 @@ export const adminTables = {
   siteSettings: defineTable({
     key: v.string(),
     contactEmail: v.optional(v.string()),
+    // Zernio social-publishing config (key="zernio")
+    zernioAutoPublish: v.optional(v.boolean()),
+    zernioProfilesByFormat: v.optional(v.object({
+      blog_post: v.optional(v.array(v.string())),
+      twitter_thread: v.optional(v.array(v.string())),
+      linkedin_article: v.optional(v.array(v.string())),
+      newsletter_issue: v.optional(v.array(v.string())),
+    })),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
