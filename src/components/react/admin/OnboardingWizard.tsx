@@ -3,17 +3,81 @@ import { useConvexAuth, useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { ConvexClientProvider } from '../ConvexClientProvider';
 import { SignInButtons } from '../SignInButtons';
-import { Loader2, Check, Building2, Compass, Send, Mail, Users } from 'lucide-react';
+import { Loader2, Check, Building2, Compass, Send, Mail, Users, Rss } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
-type Step = 'workspace' | 'niche' | 'publishing' | 'invite' | 'done';
+type Step = 'channels' | 'workspace' | 'niche' | 'publishing' | 'invite' | 'done';
+
+interface Channels {
+  social: boolean;
+  newsletter: boolean;
+}
 
 const STEPS: { key: Step; label: string; icon: React.ReactNode }[] = [
+  { key: 'channels', label: 'Channels', icon: <Rss className="w-4 h-4" /> },
   { key: 'workspace', label: 'Workspace', icon: <Building2 className="w-4 h-4" /> },
   { key: 'niche', label: 'Niche', icon: <Compass className="w-4 h-4" /> },
   { key: 'publishing', label: 'Publishing', icon: <Send className="w-4 h-4" /> },
   { key: 'invite', label: 'Invite', icon: <Users className="w-4 h-4" /> },
 ];
+
+// ===== Step 0: Channels =====
+
+function ChannelsStep({ onNext }: { onNext: (channels: Channels) => void }) {
+  const [social, setSocial] = useState(false);
+  const [newsletter, setNewsletter] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-white mb-1">What do you want to publish?</h2>
+        <p className="text-slate-400 text-sm">You can add channels later from workspace settings.</p>
+      </div>
+      <div className="space-y-3">
+        {/* Blog always on */}
+        <label className="flex items-start gap-3 p-4 bg-teal-600/10 border border-teal-600/30 rounded-lg cursor-default">
+          <div className="w-5 h-5 mt-0.5 rounded bg-teal-600 flex items-center justify-center flex-shrink-0">
+            <Check className="w-3 h-3 text-white" />
+          </div>
+          <div>
+            <p className="text-white font-medium">Blog posts</p>
+            <p className="text-slate-400 text-sm">Publish long-form content to your public blog — no extra service needed.</p>
+          </div>
+        </label>
+        <label className="flex items-start gap-3 p-4 bg-slate-800/50 border border-slate-700 rounded-lg cursor-pointer hover:border-slate-600 transition-colors">
+          <input
+            type="checkbox"
+            checked={social}
+            onChange={(e) => setSocial(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-teal-500 flex-shrink-0"
+          />
+          <div>
+            <p className="text-white font-medium">Social media</p>
+            <p className="text-slate-400 text-sm">Post threads, articles, and updates to Twitter/X, LinkedIn, Threads, and more via Zernio.</p>
+          </div>
+        </label>
+        <label className="flex items-start gap-3 p-4 bg-slate-800/50 border border-slate-700 rounded-lg cursor-pointer hover:border-slate-600 transition-colors">
+          <input
+            type="checkbox"
+            checked={newsletter}
+            onChange={(e) => setNewsletter(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-teal-500 flex-shrink-0"
+          />
+          <div>
+            <p className="text-white font-medium">Email newsletter</p>
+            <p className="text-slate-400 text-sm">Send newsletter issues to your subscriber list via Resend.</p>
+          </div>
+        </label>
+      </div>
+      <button
+        onClick={() => onNext({ social, newsletter })}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors font-medium"
+      >
+        Continue →
+      </button>
+    </div>
+  );
+}
 
 // ===== Step 1: Workspace =====
 
@@ -218,7 +282,7 @@ function NicheStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void 
 
 // ===== Step 3: Publishing =====
 
-function PublishingStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
+function PublishingStep({ onNext, onSkip, channels }: { onNext: () => void; onSkip: () => void; channels: Channels }) {
   const [audienceId, setAudienceId] = useState('');
   const [fromAddress, setFromAddress] = useState('');
   const [replyTo, setReplyTo] = useState('');
@@ -266,7 +330,13 @@ function PublishingStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => 
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold text-white mb-1">Connect publishing</h2>
-        <p className="text-slate-400">Set up Resend to send newsletter issues to your audience.</p>
+        <p className="text-slate-400">
+          {channels.newsletter && channels.social
+            ? 'Configure Resend for newsletters and Zernio for social media.'
+            : channels.newsletter
+            ? 'Configure Resend to send newsletter issues to your audience.'
+            : 'Configure Zernio to publish to social media.'}
+        </p>
       </div>
       <div className="space-y-4">
         <div>
@@ -493,7 +563,8 @@ function OnboardingWizardInner() {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const currentUser = useQuery(api.users.getCurrentUser);
   const activeWorkspace = useQuery(api.workspaces.getActiveWorkspace);
-  const [step, setStep] = useState<Step>('workspace');
+  const [step, setStep] = useState<Step>('channels');
+  const [channels, setChannels] = useState<Channels>({ social: false, newsletter: false });
 
   // If already has workspace, jump to done (or redirect)
   useEffect(() => {
@@ -524,20 +595,27 @@ function OnboardingWizardInner() {
 
   const workspaceId = activeWorkspace?._id;
 
+  const needsPublishing = channels.social || channels.newsletter;
+  const afterNiche = needsPublishing ? 'publishing' : 'invite';
+
   return (
     <div className="w-full max-w-lg mx-auto">
       {step !== 'done' && <StepProgress current={step} />}
+      {step === 'channels' && (
+        <ChannelsStep onNext={(ch) => { setChannels(ch); setStep('workspace'); }} />
+      )}
       {step === 'workspace' && (
         <WorkspaceStep onNext={() => setStep('niche')} />
       )}
       {step === 'niche' && (
         <NicheStep
-          onNext={() => setStep('publishing')}
-          onSkip={() => setStep('publishing')}
+          onNext={() => setStep(afterNiche)}
+          onSkip={() => setStep(afterNiche)}
         />
       )}
       {step === 'publishing' && (
         <PublishingStep
+          channels={channels}
           onNext={() => setStep('invite')}
           onSkip={() => setStep('invite')}
         />

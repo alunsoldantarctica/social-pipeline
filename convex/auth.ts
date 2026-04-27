@@ -1,18 +1,20 @@
-import Google from "@auth/core/providers/google";
+import GitHub from "@auth/core/providers/github";
 import { convexAuth } from "@convex-dev/auth/server";
 
 /**
- * Convex Auth — Google OAuth only.
+ * Convex Auth — GitHub OAuth.
  *
  * Required env vars (set in Convex dashboard):
- * - AUTH_GOOGLE_ID: Google OAuth Client ID
- * - AUTH_GOOGLE_SECRET: Google OAuth Client Secret
+ * - AUTH_GITHUB_ID: GitHub OAuth App Client ID
+ * - AUTH_GITHUB_SECRET: GitHub OAuth App Client Secret
  *
- * Google OAuth callback URL (configure in Google Cloud Console):
- * https://<your-convex-deployment>.convex.site/api/auth/callback/google
+ * GitHub OAuth App callback URL:
+ * https://<your-convex-deployment>.convex.site/api/auth/callback/github
+ *
+ * Create at: GitHub → Settings → Developer Settings → OAuth Apps → New OAuth App
  */
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Google],
+  providers: [GitHub],
   callbacks: {
     async createOrUpdateUser(ctx, { existingUserId, profile }) {
       const profileObj = profile && typeof profile === "object" ? profile as Record<string, unknown> : undefined;

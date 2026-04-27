@@ -5,21 +5,29 @@ workers_dev = true
 preview_urls = true
 
 # KV Namespace for Astro Sessions
-# Run: wrangler kv namespace create SESSION
-# Then replace the id below with the output id.
+# Created automatically by the deploy workflow (deploy.yml).
+# For local dev: wrangler kv namespace create SESSION --preview
 [[kv_namespaces]]
 binding = "SESSION"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = ""
+
+# R2 bucket for file uploads and media storage
+# Created automatically by the deploy workflow (deploy.yml).
+# Free tier: 10 GB storage, 1M Class A + 10M Class B ops/month
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "social-pipeline-uploads"
+preview_bucket_name = "social-pipeline-uploads-preview"
 
 # Environment variables
 [vars]
-# Production canonical site URL — also used by Astro at build time via process.env.SITE_URL
+# Production canonical site URL — also used as the GitHub OAuth callback base
 SITE_URL = "https://your-domain.com"
-# Run: pnpx convex dev  (first time — creates your deployment and prints the URL)
+# Your Convex deployment URL (from Convex dashboard → Settings)
 PUBLIC_CONVEX_URL = "https://your-deployment.convex.cloud"
-# Run: npx web-push generate-vapid-keys  to generate VAPID keys for push notifications
+# VAPID public key for web push (generate with: npx web-push generate-vapid-keys)
 PUBLIC_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
-# Your Cloudflare Images account hash (from Cloudflare Dashboard → Images → Overview)
+# Cloudflare Images account hash (Cloudflare Dashboard → Images → Overview)
 CLOUDFLARE_IMAGES_HASH = "REPLACE_WITH_YOUR_IMAGES_HASH"
 
 [observability]
@@ -36,14 +44,19 @@ name = "social-pipeline-dev"
 workers_dev = true
 
 [env.dev.vars]
-SITE_URL = "https://dev.your-domain.com"
+SITE_URL = "http://localhost:4321"
 PUBLIC_CONVEX_URL = "https://your-dev-deployment.convex.cloud"
 PUBLIC_VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
 CLOUDFLARE_IMAGES_HASH = "REPLACE_WITH_YOUR_IMAGES_HASH"
 
 [[env.dev.kv_namespaces]]
 binding = "SESSION"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = ""
+
+[[env.dev.r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "social-pipeline-uploads-preview"
+preview_bucket_name = "social-pipeline-uploads-preview"
 
 [env.dev.observability]
 enabled = true
