@@ -66,6 +66,30 @@ export const adminTables = {
     updatedAt: v.number(),
   }).index("by_active_order", ["isActive", "order"]),
 
+  // ===== AGENT INSTRUCTIONS (DB-driven prompts) =====
+  // One row per (stage, format) pair. `format` is undefined for the base
+  // stage prompt (research/outline/draft) and set for draft format
+  // adapters (twitter_thread/linkedin_article/newsletter_issue).
+  // `useDefault=true` makes the runtime resolver fall back to the constants
+  // in convex/agents/instructions.ts and convex/agents/formatAdapters.ts.
+
+  agentInstructions: defineTable({
+    stage: v.union(
+      v.literal("research"),
+      v.literal("outline"),
+      v.literal("draft"),
+    ),
+    format: v.optional(v.union(
+      v.literal("twitter_thread"),
+      v.literal("linkedin_article"),
+      v.literal("newsletter_issue"),
+    )),
+    body: v.string(),
+    useDefault: v.boolean(),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_stage_format", ["stage", "format"]),
+
   // ===== CONTENT PODS (pillar strategy) =====
 
   contentPods: defineTable({
