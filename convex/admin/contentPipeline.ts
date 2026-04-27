@@ -363,7 +363,7 @@ export const setSocialPublishStatus = internalMutation({
         v.literal("failed"),
         v.literal("skipped"),
       ),
-      provider: v.literal("zernio"),
+      provider: v.union(v.literal("zernio"), v.literal("resend")),
       profileIds: v.optional(v.array(v.string())),
       postIds: v.optional(v.array(v.string())),
       scheduledAt: v.optional(v.number()),
@@ -518,6 +518,18 @@ export const createBlogPost = internalMutation({
       );
     }
 
+    // Resolve the placeholder hero image: prefer the configured default in
+    // siteSettings (key="media"); fall back to a built-in Cloudflare Images
+    // path so the blog post still renders if no setting is saved.
+    const mediaSettings = await ctx.db
+      .query("siteSettings")
+      .withIndex("by_key", (q) => q.eq("key", "media"))
+      .first();
+    const imagesHash = process.env.CLOUDFLARE_IMAGES_HASH ?? "8QkloevzOQ4esN7rTdpXmg";
+    const heroImageId =
+      mediaSettings?.defaultBlogHeroImageId ?? "placeholder-hero";
+    const placeholderHero = `https://imagedelivery.net/${imagesHash}/${heroImageId}/large`;
+
     // Create the blog post
     const blogPostId = await ctx.db.insert("blogPosts", {
       title: workflow.outlineOutput.title,
@@ -526,10 +538,7 @@ export const createBlogPost = internalMutation({
       content: sanitized,
       category: "Guides",
       readTimeMinutes: workflow.draftOutput.estimatedReadTime,
-      // Placeholder hero — editor replaces before publish. The Cloudflare
-      // Images hash here must resolve (the previous hardcoded value was
-      // already-deleted per UNS-647).
-      imageUrl: "https://imagedelivery.net/8QkloevzOQ4esN7rTdpXmg/placeholder-hero/large",
+      imageUrl: placeholderHero,
       isPublished: false,
       scheduledPublishAt,
       podId: workflow.podId,

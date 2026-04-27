@@ -25,7 +25,7 @@ const siteTitle = title !== 'social-pipeline' ? `${title} — social-pipeline` :
     <meta property="og:title" content={siteTitle} />
     <meta property="og:description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- TODO: Add your font imports here -->
+    <link rel="canonical" href={Astro.url.href} />
   </head>
   <body class="min-h-screen bg-background font-sans text-foreground">
     <slot />
