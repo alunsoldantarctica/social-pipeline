@@ -25,33 +25,9 @@ import {
 import { internal } from "../_generated/api";
 import { adminAction, adminMutation, adminQuery } from "../lib/adminAuth";
 import { parseNewsletterDraft } from "../agents/parseNewsletterDraft";
+import { type ResendConfig, readConfig } from "./resendConfig";
 
 const RESEND_BASE_URL = "https://api.resend.com";
-
-type ResendConfig = {
-  autoSend: boolean;
-  audienceId?: string;
-  fromAddress?: string;
-  replyTo?: string;
-};
-
-const EMPTY_CONFIG: ResendConfig = { autoSend: false };
-
-function readConfig(row: unknown): ResendConfig {
-  if (!row || typeof row !== "object") return EMPTY_CONFIG;
-  const r = row as {
-    resendAutoSend?: boolean;
-    resendAudienceId?: string;
-    resendFromAddress?: string;
-    resendReplyTo?: string;
-  };
-  return {
-    autoSend: r.resendAutoSend ?? false,
-    audienceId: r.resendAudienceId,
-    fromAddress: r.resendFromAddress,
-    replyTo: r.resendReplyTo,
-  };
-}
 
 async function resendFetch(path: string, init: RequestInit = {}) {
   const apiKey = process.env.AUTH_RESEND_KEY;
