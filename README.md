@@ -1,6 +1,6 @@
 # social-pipeline
 
-**[→ Setup wizard](https://alunsoldantarctica.github.io/social-pipeline/setup/)** — guided step-by-step installer: creates accounts, provisions Cloudflare resources, and generates your secrets in one flow.
+**[→ Setup wizard](https://social-pipeline-installer.workers.dev)** — guided step-by-step installer: sign in with GitHub, creates accounts, provisions Cloudflare resources, and generates your secrets in one flow.
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/alunsoldantarctica/social-pipeline)
 
