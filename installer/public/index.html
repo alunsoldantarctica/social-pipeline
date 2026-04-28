@@ -81,6 +81,8 @@
     .btn-sm { padding: .375rem .875rem; font-size: .8125rem; }
     .btn-ext { background: #1e293b; color: #e2e8f0; }
     .btn-ext:hover { background: #334155; color: #fff; }
+    .perm-list { display: flex; flex-wrap: wrap; gap: .375rem; margin-top: .5rem; }
+    .perm-tag { background: #0f2231; border: 1px solid #1e4060; color: #7dd3fc; font-size: .75rem; padding: .2rem .6rem; border-radius: .375rem; font-family: monospace; }
 
     .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
     .row .btn { flex-shrink: 0; }
@@ -260,9 +262,24 @@
     </div>
 
     <ol class="steps-list">
-      <li>Create a free Cloudflare account at <a href="https://cloudflare.com" target="_blank">cloudflare.com</a> (skip if you have one).</li>
-      <li>Go to <strong>My Profile → API Tokens → Create Token → Create Custom Token</strong>.</li>
-      <li>Add these permissions: <code>Workers Scripts: Edit</code>, <code>Workers KV Storage: Edit</code>, <code>Workers R2 Storage: Edit</code>, <code>AI Gateway: Edit</code>, <code>Account Settings: Read</code>.</li>
+      <li>No account? <a href="https://dash.cloudflare.com/sign-up" target="_blank">Create one free →</a></li>
+      <li>
+        <div>
+          <a class="btn btn-outline btn-sm" href="https://dash.cloudflare.com/profile/api-tokens/create" target="_blank" style="display:inline-flex;align-items:center;gap:.375rem;margin-bottom:.5rem">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open API Token creator →
+          </a>
+          <div style="color:#94a3b8;font-size:.8125rem">Click <strong style="color:#e2e8f0">Create Custom Token</strong>, then add these permissions:</div>
+          <div class="perm-list">
+            <span class="perm-tag">Workers Scripts · Edit</span>
+            <span class="perm-tag">Workers KV Storage · Edit</span>
+            <span class="perm-tag">Workers R2 Storage · Edit</span>
+            <span class="perm-tag">AI Gateway · Edit</span>
+            <span class="perm-tag">D1 · Edit</span>
+            <span class="perm-tag">Account Settings · Read</span>
+          </div>
+        </div>
+      </li>
       <li>Copy the token (shown once) and paste it below.</li>
     </ol>
 
@@ -289,6 +306,14 @@
       <div class="screenshot" style="margin-top:.75rem">
         <img src="img/cf-account-id.png" alt="Cloudflare account overview — Account ID in the right sidebar" />
       </div>
+    </div>
+
+    <div class="field-group" id="cfZoneSection" style="display:none">
+      <label class="field-label" for="cfZone">Custom domain <span style="color:#64748b;font-weight:400">(optional)</span></label>
+      <select id="cfZone" onchange="onCFZone(this.value)" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:.5rem;padding:.625rem .75rem;color:#e2e8f0;font-size:.875rem">
+        <option value="">— use workers.dev free subdomain —</option>
+      </select>
+      <div class="field-hint">Domains registered in your Cloudflare account. Selecting one sets your site URL to that domain.</div>
     </div>
 
     <div id="cfProvisionSection" style="display:none">
@@ -724,7 +749,7 @@ async function validateCF() {
       status.textContent = '✓ Token valid';
       status.className = 'field-success';
       document.getElementById('cfToken').classList.add('valid');
-      // Try to auto-fetch account ID
+      // Auto-fetch account ID
       const acctR = await fetch('https://api.cloudflare.com/client/v4/accounts?per_page=5', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -734,6 +759,19 @@ async function validateCF() {
         document.getElementById('cfAccountId').value = id;
         onCFAccountId(id);
       }
+      // Fetch zones and populate dropdown
+      try {
+        const zoneR = await fetch('https://api.cloudflare.com/client/v4/zones?per_page=50&status=active', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const zoneD = await zoneR.json();
+        if (zoneD.success && zoneD.result?.length > 0) {
+          const sel = document.getElementById('cfZone');
+          sel.innerHTML = '<option value="">— use workers.dev free subdomain —</option>' +
+            zoneD.result.map(z => `<option value="${z.name}">${z.name}</option>`).join('');
+          document.getElementById('cfZoneSection').style.display = 'block';
+        }
+      } catch {}
     } else {
       status.textContent = '✗ Invalid token — check permissions';
       status.className = 'field-error';
@@ -751,6 +789,17 @@ function onCFAccountId(v) {
   const show = state.cfToken && state.cfAccountId;
   document.getElementById('cfProvisionSection').style.display = show ? 'block' : 'none';
   if (show && !state.cfProvisioned) renderProvisionItems();
+}
+
+function onCFZone(v) {
+  if (v) {
+    updateSiteUrl('https://' + v);
+    state.customDomain = v;
+  } else {
+    // Revert to workers.dev
+    updateSiteUrl(`https://${state.githubUsername || 'social-pipeline'}.workers.dev`);
+    state.customDomain = '';
+  }
 }
 
 function renderProvisionItems() {
