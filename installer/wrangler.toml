@@ -1,0 +1,19 @@
+name = "social-pipeline-installer"
+compatibility_date = "2025-01-01"
+main = "src/index.ts"
+workers_dev = true
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+
+[vars]
+GITHUB_REPO = "alunsoldantarctica/social-pipeline"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+invocation_logs = true
