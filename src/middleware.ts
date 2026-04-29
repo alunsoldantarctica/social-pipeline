@@ -35,15 +35,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Apply session only for paths that need it
   const needsSession = SESSION_PATH_PREFIXES.some((p) => pathname.startsWith(p));
 
-  if (needsSession) {
-    // Admin auth guard: redirect unauthenticated users to login
-    if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-      const session = context.locals.session;
-      if (!session?.userId) {
-        return context.redirect('/admin/login');
-      }
-    }
-  }
+  // Admin auth is handled client-side by AdminShell via Convex auth.
+  // No server-side session check needed here.
+  void needsSession;
 
   const response = await next();
 
