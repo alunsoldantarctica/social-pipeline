@@ -27,16 +27,31 @@ export const analyticsTables = {
     .index("by_model", ["model", "createdAt"]),
 
   // ===== PIPELINE COST ASSUMPTIONS =====
-  // Per-model cost estimates used to project cost before a workflow runs.
+  // Per-step token estimates used to project cost before a workflow runs.
 
   pipelineCostAssumptions: defineTable({
-    modelId: v.string(),
-    stage: v.string(),
-    estimatedInputTokens: v.number(),
-    estimatedOutputTokens: v.number(),
-    inputCostPerMillionTokens: v.number(),
-    outputCostPerMillionTokens: v.number(),
-    notes: v.optional(v.string()),
+    step: v.union(v.literal("research"), v.literal("outline"), v.literal("draft")),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+    webSearches: v.optional(v.number()),
+    revisions: v.optional(v.number()),
     updatedAt: v.number(),
-  }).index("by_model_stage", ["modelId", "stage"]),
+  }).index("by_step", ["step"]),
+
+  // ===== MODEL CATALOG =====
+  // OpenRouter model registry — synced daily, drives the models UI and cost tracking.
+
+  modelCatalog: defineTable({
+    id: v.string(),
+    displayName: v.string(),
+    provider: v.optional(v.string()),
+    family: v.optional(v.string()),
+    isEnabled: v.boolean(),
+    recommendedFor: v.array(v.union(v.literal("research"), v.literal("outline"), v.literal("draft"))),
+    promptPrice: v.number(),
+    completionPrice: v.number(),
+    webSearchPrice: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_model_id", ["id"])
+    .index("by_enabled", ["isEnabled"]),
 };
