@@ -87,14 +87,21 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # ── Provision: VAPID keys ──────────────────────────────────────────────
-      - name: Generate VAPID keys (if not set)
-        if: ${{ !secrets.VAPID_PRIVATE_KEY }}
+      - name: Generate VAPID keys (if not already set)
         run: |
-          KEYS=$(npx web-push generate-vapid-keys --json)
-          PUBLIC=$(echo "$KEYS" | jq -r '.publicKey')
-          PRIVATE=$(echo "$KEYS" | jq -r '.privateKey')
-          echo "$PRIVATE" | npx wrangler secret put VAPID_PRIVATE_KEY
-          sed -i "s/REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY/$PUBLIC/" wrangler.toml
+          EXISTING=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/social-pipeline/secrets" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | \
+            jq -r '.result[]? | select(.name=="VAPID_PRIVATE_KEY") | .name // empty')
+          if [ -z "$EXISTING" ]; then
+            KEYS=$(npx web-push generate-vapid-keys --json)
+            PUBLIC=$(echo "$KEYS" | jq -r '.publicKey')
+            PRIVATE=$(echo "$KEYS" | jq -r '.privateKey')
+            echo "$PRIVATE" | npx wrangler secret put VAPID_PRIVATE_KEY
+            sed -i "s/REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY/$PUBLIC/" wrangler.toml
+            echo "Generated and stored new VAPID keys"
+          else
+            echo "VAPID keys already set — skipping"
+          fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
