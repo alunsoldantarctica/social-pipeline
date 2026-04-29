@@ -31,6 +31,8 @@
     "@nanostores/react": "^0.8.4",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",
+    "@tiptap/react": "^3.22.5",
+    "@tiptap/starter-kit": "^3.22.5",
     "@uiw/react-md-editor": "^4.1.0",
     "ai": "^6.0.42",
     "ai-gateway-provider": "^3.0.2",
