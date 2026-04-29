@@ -113,7 +113,7 @@ jobs:
         run: |
           set_if_present() {
             local key="$1" val="$2"
-            [ -n "$val" ] && npx convex env set "$key" "$val" --prod || true
+            [ -n "$val" ] && npx convex env set "$key" "$val" || true
           }
           set_if_present CF_ACCOUNT_ID        "$CF_ACCOUNT_ID"
           set_if_present CF_AI_GATEWAY_NAME   "social-pipeline"
@@ -139,13 +139,13 @@ jobs:
 
       # ── Convex: deploy functions ───────────────────────────────────────────
       - name: Deploy Convex functions
-        run: npx convex deploy --prod
+        run: npx convex deploy
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       # ── Convex: run migrations ─────────────────────────────────────────────
       - name: Run Convex migrations
-        run: npx convex run migrations/runner:runPending '{}' --prod
+        run: npx convex run migrations/runner:runPending '{}'
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
