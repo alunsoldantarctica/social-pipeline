@@ -1,0 +1,22 @@
+export const translations: Record<string, Record<string, string>> = {
+  en: {
+    "meta.blog.title": "Blog",
+    "meta.blog.description": "Articles and insights",
+    "blog.hero.title": "Blog",
+    "blog.hero.subtitle": "Articles and insights from our team",
+    "blog.browseByHub": "Browse by hub",
+    "blog.minRead": "{minutes} min read",
+    "blog.readArticle": "Read article",
+    "blog.categories.blog_post": "Blog Post",
+    "blog.categories.twitter_thread": "Twitter Thread",
+    "blog.categories.linkedin_article": "LinkedIn Article",
+    "blog.categories.newsletter_issue": "Newsletter",
+    "meta.post.title": "Post",
+    "meta.post.description": "",
+    "post.backToBlog": "Back to blog",
+    "post.readMore": "Read more",
+    "post.publishedOn": "Published on",
+    "post.updatedOn": "Updated on",
+    "post.minuteRead": "{minutes} min read",
+  },
+};
