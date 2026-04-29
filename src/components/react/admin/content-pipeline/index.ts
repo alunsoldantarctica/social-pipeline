@@ -8,12 +8,7 @@ export { ResearchReviewPanel } from './ResearchReviewPanel';
 export { OutlineReviewPanel } from './OutlineReviewPanel';
 export { DraftReviewPanel } from './DraftReviewPanel';
 
+export type { WorkflowStatus, Workflow } from './types';
+export { isPendingReview, isInProgress, STATUS_CONFIG } from './types';
+
 export type FilterStatus = "all" | "pending_review" | "in_progress" | "completed" | "failed";
-
-export function isPendingReview(status: string): boolean {
-  return status.endsWith("_review");
-}
-
-export function isInProgress(status: string): boolean {
-  return status.endsWith("_in_progress");
-}
