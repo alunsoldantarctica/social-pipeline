@@ -1,4 +1,6 @@
 ---
+import '../styles/global.css';
+
 interface Props {
   title?: string;
 }
@@ -8,10 +10,11 @@ const { title = 'Admin' } = Astro.props;
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title} — social-pipeline</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
-  <body>
+  <body class="min-h-screen bg-slate-950 text-slate-100 font-sans">
     <slot />
   </body>
 </html>
