@@ -1,0 +1,16 @@
+---
+interface Props {
+  name: string;
+  size?: number;
+  class?: string;
+}
+const { name, size = 16, class: className } = Astro.props;
+---
+<svg
+  width={size}
+  height={size}
+  class:list={["icon", `icon-${name}`, className]}
+  aria-hidden="true"
+  fill="currentColor"
+  viewBox="0 0 24 24"
+/>
