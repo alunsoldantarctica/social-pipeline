@@ -1,0 +1,17 @@
+---
+interface Props {
+  title?: string;
+}
+const { title = 'Admin' } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} — social-pipeline</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
