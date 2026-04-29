@@ -5,7 +5,7 @@ export interface Env {
   GITHUB_CLIENT_SECRET: string;
 }
 
-const SCOPES = "read:user,public_repo";
+const SCOPES = "read:user,repo";
 const COOKIE_NAME = "gh_oauth_state";
 
 export default {
@@ -22,6 +22,22 @@ export default {
 
     if (url.pathname === "/health") {
       return new Response("OK", { status: 200 });
+    }
+
+    if (url.pathname === "/api/cf-validate" && request.method === "POST") {
+      return proxyCFValidate(request);
+    }
+
+    if (url.pathname === "/api/cf-zones" && request.method === "POST") {
+      return proxyCFZones(request);
+    }
+
+    if (url.pathname === "/api/cf-provision" && request.method === "POST") {
+      return proxyCFProvision(request);
+    }
+
+    if (url.pathname === "/api/trigger-deploy" && request.method === "POST") {
+      return triggerDeploy(request);
     }
 
     // Everything else (/, /img/*, etc.) served from static assets
@@ -118,6 +134,7 @@ async function handleCallback(request: Request, url: URL, env: Env): Promise<Res
   redirect.searchParams.set("gh_avatar", user.avatar_url);
   if (user.email) redirect.searchParams.set("gh_email", user.email);
   redirect.searchParams.set("fork_url", forkUrl);
+  redirect.searchParams.set("gh_token", access_token);
 
   return new Response(null, {
     status: 302,
@@ -126,6 +143,113 @@ async function handleCallback(request: Request, url: URL, env: Env): Promise<Res
       // Clear the state cookie
       "Set-Cookie": `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
     },
+  });
+}
+
+async function proxyCFValidate(request: Request): Promise<Response> {
+  const { token } = await request.json() as { token?: string };
+  if (!token) return json({ valid: false, error: "no token" }, 400);
+
+  const r = await fetch("https://api.cloudflare.com/client/v4/user/tokens/verify", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json() as { success: boolean; errors?: { message: string }[] };
+
+  if (!d.success) {
+    return json({ valid: false, error: d.errors?.[0]?.message ?? "invalid token" });
+  }
+
+  // Auto-fetch accounts
+  const acctR = await fetch("https://api.cloudflare.com/client/v4/accounts?per_page=10", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const acctD = await acctR.json() as { success: boolean; result?: { id: string; name: string }[] };
+  const accounts = acctD.success ? (acctD.result ?? []) : [];
+
+  return json({ valid: true, accounts });
+}
+
+async function triggerDeploy(request: Request): Promise<Response> {
+  const { token, owner, repo, ref = "main" } = await request.json() as {
+    token: string; owner: string; repo: string; ref?: string;
+  };
+  if (!token || !owner || !repo) return json({ ok: false, error: "missing params" }, 400);
+
+  const r = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/actions/workflows/deploy.yml/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": "social-pipeline-installer",
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ref }),
+    }
+  );
+
+  if (r.status === 204) return json({ ok: true });
+  const body = await r.text();
+  return json({ ok: false, error: body, status: r.status });
+}
+
+async function proxyCFProvision(request: Request): Promise<Response> {
+  const { token, accountId, resource } = await request.json() as {
+    token: string; accountId: string; resource: string;
+  };
+  if (!token || !accountId) return json({ success: false, error: "missing params" }, 400);
+
+  const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}`;
+  const hdrs = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  if (resource === "kv") {
+    const list = await (await fetch(`${base}/storage/kv/namespaces?per_page=100`, { headers: hdrs })).json() as { result?: { id: string; title: string }[] };
+    const ex = list.result?.find(n => n.title === "social-pipeline-SESSION");
+    if (ex) return json({ success: true, id: ex.id, existed: true });
+    const cr = await (await fetch(`${base}/storage/kv/namespaces`, { method: "POST", headers: hdrs, body: JSON.stringify({ title: "social-pipeline-SESSION" }) })).json() as { success: boolean; result?: { id: string }; errors?: { message: string }[] };
+    return json({ success: cr.success, id: cr.result?.id, error: cr.errors?.[0]?.message });
+  }
+
+  if (resource === "ai-gateway") {
+    const list = await (await fetch(`${base}/ai-gateway/gateways?per_page=100`, { headers: hdrs })).json() as { result?: { slug: string }[] };
+    const ex = list.result?.find(g => g.slug === "social-pipeline");
+    if (ex) return json({ success: true, existed: true });
+    const cr = await (await fetch(`${base}/ai-gateway/gateways`, { method: "POST", headers: hdrs, body: JSON.stringify({ name: "social-pipeline", slug: "social-pipeline" }) })).json() as { success: boolean; errors?: { message: string }[] };
+    return json({ success: cr.success, error: cr.errors?.[0]?.message });
+  }
+
+  if (resource === "r2") {
+    const cr = await (await fetch(`${base}/r2/buckets`, { method: "POST", headers: hdrs, body: JSON.stringify({ name: "social-pipeline-uploads" }) })).json() as { success: boolean; errors?: { code: number; message: string }[] };
+    if (cr.success) return json({ success: true });
+    if (cr.errors?.[0]?.code === 10006) return json({ success: true, existed: true });
+    return json({ success: false, error: cr.errors?.[0]?.message });
+  }
+
+  return json({ success: false, error: "unknown resource" }, 400);
+}
+
+async function proxyCFZones(request: Request): Promise<Response> {
+  const { token } = await request.json() as { token?: string };
+  if (!token) return json({ zones: [] }, 400);
+
+  const r = await fetch("https://api.cloudflare.com/client/v4/zones?per_page=50&status=active", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const d = await r.json() as { success: boolean; result?: { id: string; name: string }[] };
+  const zones = d.success ? (d.result ?? []) : [];
+
+  return json({ zones });
+}
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
   });
 }
 

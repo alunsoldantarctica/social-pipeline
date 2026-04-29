@@ -206,12 +206,12 @@
       </div>
     </div>
 
-    <button class="btn btn-primary" onclick="nextStep('domain')">Continue →</button>
+    <button class="btn btn-primary" onclick="nextStep('cloudflare')">Continue →</button>
   </div>
 
   <!-- ── Step 3: Domain ────────────────────────────────────────────────── -->
   <div class="card" id="step-domain" data-step="domain" data-title="Domain">
-    <h2>Step 3 — Your domain</h2>
+    <h2>Step 4 — Your domain</h2>
     <p class="subtitle">The web address where your app will live. You can always add a custom domain later.</p>
 
     <div class="warning">
@@ -231,6 +231,7 @@
         <input type="radio" name="domainType" value="custom" onchange="onDomainType('custom')" />
         <div style="width:100%">
           <div style="font-weight:500;color:#e2e8f0;margin-bottom:.5rem">Use my own domain</div>
+          <select id="customDomainSelect" style="display:none;width:100%;background:#0f172a;border:1px solid #334155;border-radius:.5rem;padding:.625rem .75rem;color:#e2e8f0;font-size:.875rem" onchange="onCustomDomain(this.value)"></select>
           <input type="text" id="customDomain" placeholder="yourdomain.com" style="display:none" oninput="onCustomDomain(this.value)" />
           <div class="field-hint" id="customDomainHint" style="display:none">Your domain must be added to Cloudflare DNS. <a href="https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/" target="_blank">How to add a domain to Cloudflare ↗</a></div>
         </div>
@@ -241,12 +242,12 @@
       <div class="field-hint">Your SITE_URL will be: <strong id="siteUrlPreview" style="color:#e2e8f0">https://social-pipeline.workers.dev</strong></div>
     </div>
 
-    <button class="btn btn-primary" onclick="nextStep('cloudflare')">Continue →</button>
+    <button class="btn btn-primary" onclick="nextStep('convex')">Continue →</button>
   </div>
 
   <!-- ── Step 4: Cloudflare ─────────────────────────────────────────────── -->
   <div class="card" id="step-cloudflare" data-step="cloudflare" data-title="Cloudflare">
-    <h2>Step 4 — Cloudflare account</h2>
+    <h2>Step 3 — Cloudflare account</h2>
     <p class="subtitle">Cloudflare hosts your app at the edge in 300+ cities. Also provides session storage (KV), file storage (R2), and AI request routing (AI Gateway).</p>
 
     <div class="service-meta">
@@ -323,7 +324,7 @@
     </div>
 
     <br />
-    <button class="btn btn-primary" id="cfNextBtn" disabled onclick="nextStep('convex')">Continue →</button>
+    <button class="btn btn-primary" id="cfNextBtn" disabled onclick="nextStep('domain')">Continue →</button>
   </div>
 
   <!-- ── Step 5: Convex ────────────────────────────────────────────────── -->
@@ -425,7 +426,7 @@
 
     <div class="field-group">
       <label class="field-label" for="openrouterKey">OpenRouter API Key</label>
-      <input type="password" id="openrouterKey" placeholder="sk-or-v1-..." />
+      <input type="password" id="openrouterKey" placeholder="sk-or-v1-..." oninput="state.openrouterKey=this.value.trim()" />
       <div class="field-hint">Without this, AI generation steps won't work. You can add it later.</div>
     </div>
 
@@ -456,7 +457,7 @@
 
     <div class="field-group">
       <label class="field-label" for="firecrawlKey">Firecrawl API Key</label>
-      <input type="password" id="firecrawlKey" placeholder="fc-..." />
+      <input type="password" id="firecrawlKey" placeholder="fc-..." oninput="state.firecrawlKey=this.value.trim()" />
       <div class="field-hint">Without this, the research stage and competitor scraping won't work.</div>
     </div>
 
@@ -503,7 +504,7 @@
 
   <!-- ── Step 9b: Zernio (conditional) ─────────────────────────────────── -->
   <div class="card" id="step-zernio" data-step="zernio" data-title="Social">
-    <h2>Step 9 — Zernio (social publishing)</h2>
+    <h2>Step 10 — Zernio (social publishing)</h2>
     <p class="subtitle">Publishes your content to Twitter/X, LinkedIn, Threads, Instagram, and 10+ other platforms from a single API call.</p>
 
     <div class="service-meta">
@@ -523,7 +524,7 @@
 
     <div class="field-group">
       <label class="field-label" for="zernioKey">Zernio API Key</label>
-      <input type="password" id="zernioKey" placeholder="zk_..." />
+      <input type="password" id="zernioKey" placeholder="zk_..." oninput="state.zernioKey=this.value.trim()" />
     </div>
 
     <div class="row">
@@ -546,7 +547,11 @@
     <h3 style="font-size:.875rem;font-weight:600;color:#94a3b8;margin:1rem 0 .75rem;text-transform:uppercase;letter-spacing:.05em">Pre-deploy checklist</h3>
     <ul class="checklist" id="checklist"></ul>
 
-    <a class="btn btn-primary" id="deployBtn" href="#" target="_blank">Deploy now →</a>
+    <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" id="deployBtn" onclick="triggerDeploy()">Deploy now →</button>
+      <a id="actionsLink" href="#" target="_blank" style="font-size:.8125rem;color:#64748b">Watch on GitHub Actions ↗</a>
+    </div>
+    <div id="deployStatus" style="margin-top:.75rem;font-size:.875rem"></div>
   </div>
 
 </div><!-- /wizard -->
@@ -559,8 +564,10 @@ const state = {
   domainType: 'workers',
   siteUrl: 'https://social-pipeline.workers.dev',
   customDomain: '',
+  ghToken: '',
   cfToken: '',
   cfAccountId: '',
+  cfZones: [],
   cfProvisioned: false,
   convexDeployKey: '',
   convexUrl: '',
@@ -580,7 +587,7 @@ function generateToken() {
 }
 
 // ── Progress bar ─────────────────────────────────────────────────────────
-const ALL_STEPS = ['github','channels','domain','cloudflare','convex','github-oauth','openrouter','firecrawl','resend','zernio','summary'];
+const ALL_STEPS = ['github','channels','cloudflare','domain','convex','github-oauth','openrouter','firecrawl','resend','zernio','summary'];
 let visitedSteps = new Set(['github']);
 let currentStep = 'github';
 
@@ -632,6 +639,7 @@ function nextToZernio() {
 
 // override for zernio next
 document.addEventListener('DOMContentLoaded', () => {
+  loadState();
   renderProgress();
   updateOAuthCallbackDisplay();
   handleGitHubCallback();
@@ -666,6 +674,10 @@ function handleGitHubCallback() {
   // Enable the Continue button
   document.getElementById('githubNextBtn').disabled = false;
 
+  // Store GitHub token for deploy trigger
+  const ghToken = p.get('gh_token');
+  if (ghToken) state.ghToken = ghToken;
+
   // Clean up URL params without a reload
   history.replaceState({}, '', '/');
 }
@@ -674,7 +686,7 @@ function handleGitHubCallback() {
 function onGithubUsername(v) {
   state.githubUsername = v.trim();
   const forkBtn = document.getElementById('forkBtn');
-  if (state.githubUsername) {
+  if (forkBtn && state.githubUsername) {
     forkBtn.href = `https://github.com/alunsoldantarctica/social-pipeline/fork`;
   }
   const secretsLink = document.getElementById('secretsLink');
@@ -713,7 +725,16 @@ function onDomainType(v) {
     optCustom.classList.remove('selected');
     updateSiteUrl(`https://${state.githubUsername || 'social-pipeline'}.workers.dev`);
   } else {
-    customInput.style.display = 'block';
+    const sel = document.getElementById('customDomainSelect');
+    if (state.cfZones.length > 0) {
+      sel.innerHTML = state.cfZones.map(z => `<option value="${z}">${z}</option>`).join('');
+      sel.style.display = 'block';
+      customInput.style.display = 'none';
+      if (!state.customDomain) onCustomDomain(state.cfZones[0]);
+    } else {
+      sel.style.display = 'none';
+      customInput.style.display = 'block';
+    }
     customHint.style.display = 'block';
     optWorkers.classList.remove('selected');
     optCustom.classList.add('selected');
@@ -740,47 +761,46 @@ async function validateCF() {
   status.textContent = 'Validating…'; status.className = 'field-hint';
 
   try {
-    const r = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
-      headers: { Authorization: `Bearer ${token}` }
+    const r = await fetch('/api/cf-validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
     });
     const d = await r.json();
-    if (d.success) {
+    if (d.valid) {
       state.cfToken = token;
       status.textContent = '✓ Token valid';
       status.className = 'field-success';
       document.getElementById('cfToken').classList.add('valid');
-      // Auto-fetch account ID
-      const acctR = await fetch('https://api.cloudflare.com/client/v4/accounts?per_page=5', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const acctD = await acctR.json();
-      if (acctD.success && acctD.result?.length === 1) {
-        const id = acctD.result[0].id;
+      // Auto-fill account ID if only one account
+      if (d.accounts?.length === 1) {
+        const id = d.accounts[0].id;
         document.getElementById('cfAccountId').value = id;
         onCFAccountId(id);
       }
       // Fetch zones and populate dropdown
       try {
-        const zoneR = await fetch('https://api.cloudflare.com/client/v4/zones?per_page=50&status=active', {
-          headers: { Authorization: `Bearer ${token}` }
+        const zoneR = await fetch('/api/cf-zones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
         });
         const zoneD = await zoneR.json();
-        if (zoneD.success && zoneD.result?.length > 0) {
+        if (zoneD.zones?.length > 0) {
+          state.cfZones = zoneD.zones.map(z => z.name);
           const sel = document.getElementById('cfZone');
           sel.innerHTML = '<option value="">— use workers.dev free subdomain —</option>' +
-            zoneD.result.map(z => `<option value="${z.name}">${z.name}</option>`).join('');
+            state.cfZones.map(z => `<option value="${z}">${z}</option>`).join('');
           document.getElementById('cfZoneSection').style.display = 'block';
         }
       } catch {}
     } else {
-      status.textContent = '✗ Invalid token — check permissions';
+      status.textContent = `✗ Invalid token — ${d.error ?? 'check permissions'}`;
       status.className = 'field-error';
     }
   } catch (e) {
-    status.textContent = '✗ Could not validate (CORS may block this) — proceed if you\'re confident the token is correct.';
-    status.className = 'field-hint';
-    state.cfToken = token;
-    onCFAccountId(document.getElementById('cfAccountId').value);
+    status.textContent = '✗ Validation failed — check your connection and try again.';
+    status.className = 'field-error';
   }
 }
 
@@ -833,43 +853,35 @@ async function provisionCF() {
   btn.disabled = true; btn.textContent = 'Provisioning…';
   renderProvisionItems();
 
-  const base = `https://api.cloudflare.com/client/v4/accounts/${state.cfAccountId}`;
-  const hdrs = { 'Authorization': `Bearer ${state.cfToken}`, 'Content-Type': 'application/json' };
+  const provProxy = (resource) => fetch('/api/cf-provision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: state.cfToken, accountId: state.cfAccountId, resource }),
+  }).then(r => r.json());
 
   // KV
   setProvItem('kv', 'loading');
   try {
-    const list = await (await fetch(`${base}/storage/kv/namespaces?per_page=100`, { headers: hdrs })).json();
-    const ex = list.result?.find(n => n.title === 'social-pipeline-SESSION');
-    if (ex) { setProvItem('kv', 'done', ex.id.slice(0,8) + '…'); }
-    else {
-      const cr = await (await fetch(`${base}/storage/kv/namespaces`, { method:'POST', headers:hdrs, body: JSON.stringify({ title:'social-pipeline-SESSION' }) })).json();
-      if (cr.success) setProvItem('kv', 'done', cr.result.id.slice(0,8) + '…');
-      else setProvItem('kv', 'error', cr.errors?.[0]?.message || 'failed');
-    }
-  } catch(e) { setProvItem('kv', 'error', 'CORS — provision via deploy.yml instead'); }
+    const d = await provProxy('kv');
+    if (d.success) setProvItem('kv', 'done', d.existed ? 'already exists' : d.id.slice(0,8) + '…');
+    else setProvItem('kv', 'error', d.error || 'failed');
+  } catch(e) { setProvItem('kv', 'error', 'failed'); }
 
   // AI Gateway
   setProvItem('ai-gateway', 'loading');
   try {
-    const list = await (await fetch(`${base}/ai-gateway/gateways?per_page=100`, { headers: hdrs })).json();
-    const ex = list.result?.find(g => g.slug === 'social-pipeline');
-    if (ex) { setProvItem('ai-gateway', 'done', 'social-pipeline'); }
-    else {
-      const cr = await (await fetch(`${base}/ai-gateway/gateways`, { method:'POST', headers:hdrs, body: JSON.stringify({ name:'social-pipeline', slug:'social-pipeline' }) })).json();
-      if (cr.success) setProvItem('ai-gateway', 'done', 'social-pipeline');
-      else setProvItem('ai-gateway', 'error', cr.errors?.[0]?.message || 'failed');
-    }
-  } catch(e) { setProvItem('ai-gateway', 'error', 'CORS — will be created by deploy.yml'); }
+    const d = await provProxy('ai-gateway');
+    if (d.success) setProvItem('ai-gateway', 'done', 'social-pipeline');
+    else setProvItem('ai-gateway', 'error', d.error || 'failed');
+  } catch(e) { setProvItem('ai-gateway', 'error', 'failed'); }
 
   // R2
   setProvItem('r2', 'loading');
   try {
-    const cr = await (await fetch(`${base}/r2/buckets`, { method:'POST', headers:hdrs, body: JSON.stringify({ name:'social-pipeline-uploads' }) })).json();
-    if (cr.success) setProvItem('r2', 'done', 'social-pipeline-uploads');
-    else if (cr.errors?.[0]?.code === 10006) setProvItem('r2', 'done', 'already exists');
-    else setProvItem('r2', 'error', cr.errors?.[0]?.message || 'failed');
-  } catch(e) { setProvItem('r2', 'error', 'CORS — will be created by deploy.yml'); }
+    const d = await provProxy('r2');
+    if (d.success) setProvItem('r2', 'done', d.existed ? 'already exists' : 'social-pipeline-uploads');
+    else setProvItem('r2', 'error', d.error || 'failed');
+  } catch(e) { setProvItem('r2', 'error', 'failed'); }
 
   state.cfProvisioned = true;
   btn.textContent = 'Re-run provisioning';
@@ -968,7 +980,75 @@ function buildSummary() {
     const base = `https://github.com/${state.githubUsername}/social-pipeline`;
     document.getElementById('secretsLink').href = `${base}/settings/secrets/actions`;
     document.getElementById('varsLink').href = `${base}/settings/variables/actions`;
-    document.getElementById('deployBtn').href = `${base}/actions/workflows/deploy.yml`;
+    document.getElementById('actionsLink').href = `${base}/actions`;
+  }
+}
+
+// ── localStorage persistence ──────────────────────────────────────────────
+const PERSIST_KEY = 'social_pipeline_installer_v1';
+function saveState() {
+  try { localStorage.setItem(PERSIST_KEY, JSON.stringify(state)); } catch {}
+}
+function loadState() {
+  try {
+    const saved = localStorage.getItem(PERSIST_KEY);
+    if (!saved) return;
+    const s = JSON.parse(saved);
+    Object.assign(state, s);
+    // Re-apply loaded values to form fields
+    if (state.githubUsername) {
+      document.getElementById('githubUsername') && (document.getElementById('githubUsername').value = state.githubUsername);
+    }
+    if (state.cfToken) document.getElementById('cfToken').value = state.cfToken;
+    if (state.cfAccountId) document.getElementById('cfAccountId').value = state.cfAccountId;
+    if (state.convexDeployKey) document.getElementById('convexDeployKey').value = state.convexDeployKey;
+    if (state.convexUrl) document.getElementById('convexUrl').value = state.convexUrl;
+    if (state.githubOAuthId) document.getElementById('githubOAuthId').value = state.githubOAuthId;
+    if (state.githubOAuthSecret) document.getElementById('githubOAuthSecret').value = state.githubOAuthSecret;
+    if (state.openrouterKey) document.getElementById('openrouterKey').value = state.openrouterKey;
+    if (state.firecrawlKey) document.getElementById('firecrawlKey').value = state.firecrawlKey;
+    if (state.zernioKey) document.getElementById('zernioKey').value = state.zernioKey;
+    if (state.siteUrl) updateSiteUrl(state.siteUrl);
+  } catch {}
+}
+
+// ── Deploy trigger ─────────────────────────────────────────────────────────
+async function triggerDeploy() {
+  const btn = document.getElementById('deployBtn');
+  const status = document.getElementById('deployStatus');
+  if (!state.ghToken) {
+    status.innerHTML = '✗ No GitHub token — sign in with GitHub on Step 1 first.';
+    status.style.color = '#ef4444';
+    return;
+  }
+  const [owner, repo] = (state.githubUsername ? `${state.githubUsername}/social-pipeline` : '').split('/');
+  if (!owner || !repo) { status.textContent = '✗ GitHub username not set.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Triggering…';
+  status.style.color = '#94a3b8';
+  status.textContent = 'Dispatching workflow…';
+  try {
+    const r = await fetch('/api/trigger-deploy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: state.ghToken, owner, repo }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      status.innerHTML = `✓ Deploy triggered! <a href="https://github.com/${owner}/${repo}/actions" target="_blank" style="color:#2dd4bf">Watch on GitHub Actions ↗</a>`;
+      status.style.color = '#34d399';
+      btn.textContent = 'Triggered ✓';
+    } else {
+      status.textContent = `✗ Failed: ${d.error ?? 'unknown error'} (status ${d.status ?? ''})`;
+      status.style.color = '#ef4444';
+      btn.disabled = false;
+      btn.textContent = 'Deploy now →';
+    }
+  } catch (e) {
+    status.textContent = '✗ Request failed — check your connection.';
+    status.style.color = '#ef4444';
+    btn.disabled = false;
+    btn.textContent = 'Deploy now →';
   }
 }
 
@@ -993,6 +1073,7 @@ const summaryBtn = document.querySelector('#step-summary .btn-primary');
 const origNextStep = nextStep;
 window.nextStep = function(to) {
   origNextStep(to);
+  saveState();
   if (to === 'summary') buildSummary();
 };
 window.nextToPublishing = nextToPublishing;
