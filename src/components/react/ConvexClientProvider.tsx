@@ -11,12 +11,13 @@ export function ConvexClientProvider({ children }: Props) {
   // useMemo prevents SSR/hydration mismatch by ensuring consistent
   // initialization on both server and client renders.
   const convex = useMemo(() => {
-    const convexUrl = import.meta.env.PUBLIC_CONVEX_URL;
-    if (!convexUrl) {
+    const raw = import.meta.env.PUBLIC_CONVEX_URL as string | undefined;
+    if (!raw) {
       throw new Error(
         "PUBLIC_CONVEX_URL is not configured. Check your .env.local file."
       );
     }
+    const convexUrl = raw.replace(/\/+$/, '');
     return new ConvexReactClient(convexUrl);
   }, []);
 

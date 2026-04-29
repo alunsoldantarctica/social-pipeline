@@ -7,6 +7,7 @@ import {
   Loader2,
   LogOut,
   AlertTriangle,
+  Shield,
   ShieldX,
   BookOpen,
   FileText,
