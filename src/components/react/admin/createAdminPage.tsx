@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AdminShell } from './AdminShell';
 import { AdminScrollArea } from './AdminScrollArea';
 import { AdminTabs, type TabDef } from './AdminTabs';
@@ -85,9 +86,9 @@ export function createTabbedAdminPage(config: {
 // Simple factory used by index.astro: returns a redirect shell to /admin/content
 export function createAdminPage(_name: string) {
   function Page() {
-    if (typeof window !== "undefined") {
-      window.location.replace("/admin/content");
-    }
+    useEffect(() => {
+      window.location.replace('/admin/content');
+    }, []);
     return null;
   }
   Page.displayName = `AdminPage(${_name})`;
