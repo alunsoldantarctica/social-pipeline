@@ -13,6 +13,9 @@ export default defineConfig({
   site: siteUrl,
   output: 'static',
   trailingSlash: 'never',
+  redirects: {
+    '/admin': '/admin/content',
+  },
   build: {
     inlineStylesheets: 'auto',
   },

@@ -1,10 +1,6 @@
 ---
-import MainLayout from '../../layouts/MainLayout.astro';
-import { createAdminPage } from '../../components/react/admin/createAdminPage';
-
-const DashboardPage = createAdminPage('DashboardPage');
+// Handled by astro.config.mjs redirects: /admin → /admin/content
+// This file is kept as a fallback.
 ---
-
-<MainLayout title="Dashboard">
-  <DashboardPage client:load />
-</MainLayout>
+<meta http-equiv="refresh" content="0;url=/admin/content" />
+<script>window.location.replace('/admin/content');</script>
