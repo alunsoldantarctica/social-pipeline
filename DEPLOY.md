@@ -122,6 +122,33 @@ npx convex run migrations/runner:runPending
 
 ---
 
+## Staying in sync with upstream
+
+Your fork includes `.github/workflows/sync-upstream.yml`, which runs daily and fast-forwards `main` from `alunsoldantarctica/social-pipeline`. If you've edited `wrangler.toml`, `astro.config.mjs`, or anything else upstream also changes, the workflow will fail — sync manually:
+
+```bash
+gh repo sync <your-username>/social-pipeline -b main
+# or, if there are conflicts:
+git remote add upstream https://github.com/alunsoldantarctica/social-pipeline
+git fetch upstream
+git merge upstream/main
+```
+
+Disable auto-sync by deleting the workflow file or removing its `schedule:` block.
+
+---
+
+## Share image (`og.png`)
+
+The `<head>` meta tags reference `/og.png` on both the main site and the installer. Drop a 1200×630 PNG at:
+
+- `public/og.png` — main site
+- `installer/public/og.png` — deploy wizard
+
+Both are served as static assets. PNG or JPG both work; keep it under ~1 MB.
+
+---
+
 ## Local development
 
 ```bash
